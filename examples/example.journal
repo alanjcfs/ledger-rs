@@ -1,0 +1,44 @@
+; is a comment
+# also a comment
+% ditto
+| ditto
+* ditto
+
+; comment
+;   * = cleared
+;   ! = pending
+; end comment
+
+2013-01-01 * Beginning Balance
+  Assets:Cash  520
+  Assets:Savings  1200
+  Equity:Opening Balance
+
+2013-01-01 * Rent for January
+  Expenses:Rent  600.00
+  Assets:Savings
+
+; 2013-01-02 Client invoice ; secondary date is estimated date of payment
+
+; Assert cash
+2014-01-01 * KFC
+  Expenses:Food  20
+  Assets:Cash  -20
+
+2014-01-02 * KFC
+  Expenses:Food  40
+  Expenses:Rent  440
+  Assets:Cash  -480
+
+2014-01-03 ~ Monthly
+  Expenses:Rent  500
+  Expenses:Food  100
+  Assets:Bank of America
+
+; Must handle the following:
+; If date doesn't exist
+; ~ Monthly
+;   Expenses:Rent  500
+;   Assets:Bank of America
+
+;
