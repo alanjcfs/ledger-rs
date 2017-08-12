@@ -2,6 +2,7 @@ extern crate clap;
 extern crate ledger;
 
 use clap::{Arg, App, SubCommand};
+use ledger::accounting::Transaction;
 
 fn main() {
     let matches = App::new("ledger-rs")
@@ -19,14 +20,6 @@ fn main() {
 
     let contents = ledger::read(file).unwrap();
     let mut lines = contents.lines();
-
-    for line in lines {
-        let ignored_chars = [Some(';'), Some('#'), Some('%'), Some('|'), Some('*')];
-
-        if ignored_chars.contains(&line.chars().next()) {
-            // noop
-        } else if line.len() == 0 {
-            println!("Empty line")
-        }
-    }
+    let mut ledger: Vec<Transaction> = Vec::new();
+    ledger::parse(lines, &ledger);
 }
