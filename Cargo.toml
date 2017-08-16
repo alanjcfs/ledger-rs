@@ -7,3 +7,4 @@ authors = ["Alan Fung-Schwarz <alan@atomsign.net>"]
 chrono = "0.4"
 clap = "~2"
 num = "0.1"
+regex = "0.2"
