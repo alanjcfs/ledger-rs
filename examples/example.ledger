@@ -4,10 +4,10 @@
 | ditto
 * ditto
 
-comment
-  * = cleared
-  ! = pending
-end comment
+; comment
+;   * = cleared
+;   ! = pending
+; end comment
 
 2013/01/01 * Beginning Balance
   Assets:Cash  = $520

@@ -32,7 +32,8 @@ pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &[Transaction]) {
         if ignored_chars.contains(&line.chars().next()) {
             // noop
         } else if lineTrimmed.len() == 0 {
-            println!("{:?}", trans);
+            // TODO: Check transaction to make sure it balances
+            println!("");
         } else {
             let mut account: Account;
             let lineSplit: Vec<&str> = accountToAmountSpace.split(lineTrimmed).collect();
