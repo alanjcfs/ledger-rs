@@ -10,26 +10,26 @@
 ; end comment
 
 2013/01/01 * Beginning Balance
-  Assets:Cash  = $520
-  Assets:Savings  = $1200
+  Assets:Cash  520
+  Assets:Savings  1200
   Equity:Adjustments
 
 2013/01/01 * Rent for January
-  Expenses:Rent  $600.00
+  Expenses:Rent  600.00
   Assets:Savings
 
 2013/01/02=2013/01/04 Client invoice ; secondary date is estimated date of payment
 
 ; Assert cash
 2014/01/01 * KFC
-  Expenses:Food  $20
-  Assets:Cash  $-20  = $520
+  Expenses:Food  20
+  Assets:Cash  -20
 
 2014/01/02 * KFC
-  Expenses:Food  $40
-  Assets:Cash  = $500
+  Expenses:Food  40
+  Assets:Cash  500
 
 ~ Monthly
-  Expenses:Rent  $500
-  Expenses:Food  $100
+  Expenses:Rent  500
+  Expenses:Food  100
   Assets

@@ -19,8 +19,9 @@ pub fn read(s: &str) -> Result<String, io::Error> {
 }
 
 pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &[Transaction]) {
-    let mut trans: Option<Transaction> = None;
     let mut line_count = 0;
+    let mut trans: Option<Transaction> = None;
+    let mut list_of_trans: Vec<Transaction> = vec!();
     let accountToAmountSpace = Regex::new(r" {2,}|\t+").unwrap();
 
     for line in lines {
@@ -33,12 +34,29 @@ pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &[Transaction]) {
             // noop
         } else if lineTrimmed.len() == 0 {
             // TODO: Check transaction to make sure it balances
-            println!("");
+            if trans.is_none() == true {
+                // noop
+            } else {
+                list_of_trans.push(trans.unwrap());
+                trans = None;
+            }
         } else {
-            let mut account: Account;
+            if trans.is_none() == true {
+                trans = Some(Transaction::new_default());
+            }
             let lineSplit: Vec<&str> = accountToAmountSpace.split(lineTrimmed).collect();
-            println!("{:?}", lineSplit)
+            if lineSplit.len() == 2 {
+                let mut account: Account;
+                let account = Account::new(lineSplit[0].to_string(), lineSplit[1].parse::<f64>().unwrap());
+                trans = Some(trans.unwrap().add_account(account));
+            } else if lineSplit.len() == 1 {
+                let payee = lineSplit[0].to_string();
+                trans = Some(trans.unwrap().change_payee(payee));
+            }
         }
+    }
+    for t in list_of_trans {
+        println!("{:?}", t)
     }
 }
 

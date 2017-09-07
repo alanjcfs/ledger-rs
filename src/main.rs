@@ -14,6 +14,8 @@ fn main() {
              .value_name("FILE")
              .help("Set the file to use")
              .takes_value(true))
+        .subcommand(SubCommand::with_name("balance"))
+        .subcommand(SubCommand::with_name("budget"))
         .get_matches();
 
     let file = matches.value_of("file").unwrap_or("examples/example.ledger");
