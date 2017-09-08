@@ -18,7 +18,7 @@
   Expenses:Rent  600.00
   Assets:Savings
 
-2013/01/02=2013/01/04 Client invoice ; secondary date is estimated date of payment
+2013/01/02 Client invoice ; secondary date is estimated date of payment
 
 ; Assert cash
 2014/01/01 * KFC
@@ -29,7 +29,7 @@
   Expenses:Food  40
   Assets:Cash  500
 
-~ Monthly
+2014/01/03 ~ Monthly
   Expenses:Rent  500
   Expenses:Food  100
   Assets

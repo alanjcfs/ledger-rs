@@ -22,17 +22,17 @@ pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &[Transaction]) {
     let mut line_count = 0;
     let mut trans: Option<Transaction> = None;
     let mut list_of_trans: Vec<Transaction> = vec!();
-    let accountToAmountSpace = Regex::new(r" {2,}|\t+").unwrap();
+    let account_to_amount_space = Regex::new(r" {2,}|\t+").unwrap();
 
     for line in lines {
-        let lineTrimmed = line.trim();
+        let line_trimmed = line.trim();
         line_count += 1;
 
         let ignored_chars = [Some(';'), Some('#'), Some('%'), Some('|'), Some('*')];
 
         if ignored_chars.contains(&line.chars().next()) {
             // noop
-        } else if lineTrimmed.len() == 0 {
+        } else if line_trimmed.len() == 0 {
             // TODO: Check transaction to make sure it balances
             if trans.is_none() == true {
                 // noop
@@ -41,17 +41,33 @@ pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &[Transaction]) {
                 trans = None;
             }
         } else {
+            let line_split: Vec<&str> = account_to_amount_space.split(line_trimmed).collect();
             if trans.is_none() == true {
                 trans = Some(Transaction::new_default());
-            }
-            let lineSplit: Vec<&str> = accountToAmountSpace.split(lineTrimmed).collect();
-            if lineSplit.len() == 2 {
-                let mut account: Account;
-                let account = Account::new(lineSplit[0].to_string(), lineSplit[1].parse::<f64>().unwrap());
-                trans = Some(trans.unwrap().add_account(account));
-            } else if lineSplit.len() == 1 {
-                let payee = lineSplit[0].to_string();
+                let mut date_payee = line_split[0].splitn(2, " ");
+
+                let mut date_string = date_payee.next().unwrap().split("/");
+                let year = date_string.next().unwrap().parse::<i32>().unwrap();
+                let month = date_string.next().unwrap().parse::<u32>().unwrap();
+                let day = date_string.next().unwrap().parse::<u32>().unwrap();
+                println!("{}, {}, {}", year, month, day);
+                let date1 = chrono::NaiveDate::from_ymd(
+                    year,
+                    month,
+                    day);
+                let date = chrono::Date::from_utc(date1, chrono::Utc);
+                let payee = date_payee.next().unwrap().to_string();
                 trans = Some(trans.unwrap().change_payee(payee));
+                trans = Some(trans.unwrap().set_date(date));
+            } else {
+                let mut account: Account;
+                account =
+                    if line_split.len() >= 2 {
+                        Account::new(line_split[0].to_string(), line_split[1].parse::<f64>().unwrap())
+                    } else {
+                        Account::new(line_split[0].to_string(), -trans.clone().unwrap().account_sum())
+                    };
+                trans = Some(trans.unwrap().add_account(account));
             }
         }
     }

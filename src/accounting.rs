@@ -1,7 +1,7 @@
 use num::BigRational;
-use chrono::prelude::{Date,Utc};
+use chrono::prelude::{Date,Utc,FixedOffset};
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Account {
     name: String,
     balance: f64
@@ -11,9 +11,13 @@ impl Account {
     pub fn new(s: String, f: f64) -> Account {
         Account { name: s, balance: f }
     }
+    pub fn balance(self: &Account) -> f64 {
+        self.balance
+    }
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct Transaction {
     payee: String,
     date: Date<Utc>,
@@ -31,8 +35,15 @@ impl Transaction {
         self.account_changes.push(a);
         self
     }
+    pub fn account_sum(self: &Transaction) -> f64 {
+        self.account_changes.iter().fold(0., |acc, ref item| acc + item.balance())
+    }
     pub fn change_payee(mut self: Transaction, s: String) -> Transaction {
         self.payee = s;
+        self
+    }
+    pub fn set_date(mut self: Transaction, d: Date<Utc>) -> Transaction {
+        self.date = d;
         self
     }
 }

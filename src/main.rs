@@ -21,7 +21,7 @@ fn main() {
     let file = matches.value_of("file").unwrap_or("examples/example.ledger");
 
     let contents = ledger::read(file).unwrap();
-    let mut lines = contents.lines();
+    let lines = contents.lines();
     let mut ledger: Vec<Transaction> = Vec::new();
     ledger::parse(lines, &ledger);
 }
