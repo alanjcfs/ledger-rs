@@ -46,16 +46,8 @@ pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &[Transaction]) {
                 trans = Some(Transaction::new_default());
                 let mut date_payee = line_split[0].splitn(2, " ");
 
-                let mut date_string = date_payee.next().unwrap().split("/");
-                let year = date_string.next().unwrap().parse::<i32>().unwrap();
-                let month = date_string.next().unwrap().parse::<u32>().unwrap();
-                let day = date_string.next().unwrap().parse::<u32>().unwrap();
-                println!("{}, {}, {}", year, month, day);
-                let date1 = chrono::NaiveDate::from_ymd(
-                    year,
-                    month,
-                    day);
-                let date = chrono::Date::from_utc(date1, chrono::Utc);
+                let mut naive_date = chrono::NaiveDate::parse_from_str(date_payee.next().unwrap(), "%Y-%m-%d").unwrap();
+                let date = chrono::Date::from_utc(naive_date, chrono::Utc);
                 let payee = date_payee.next().unwrap().to_string();
                 trans = Some(trans.unwrap().change_payee(payee));
                 trans = Some(trans.unwrap().set_date(date));
