@@ -18,15 +18,12 @@ pub fn read(s: &str) -> Result<String, io::Error> {
     Ok(contents)
 }
 
-pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &[Transaction]) {
-    let mut line_count = 0;
+pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &mut Vec<Option<Transaction>>) {
     let mut trans: Option<Transaction> = None;
-    let mut list_of_trans: Vec<Transaction> = vec!();
     let account_to_amount_space = Regex::new(r" {2,}|\t+").unwrap();
 
     for line in lines {
         let line_trimmed = line.trim();
-        line_count += 1;
 
         let ignored_chars = [Some(';'), Some('#'), Some('%'), Some('|'), Some('*')];
 
@@ -37,23 +34,21 @@ pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &[Transaction]) {
             if trans.is_none() == true {
                 // noop
             } else {
-                list_of_trans.push(trans.unwrap());
+                ledger.push(trans);
                 trans = None;
             }
         } else {
             let line_split: Vec<&str> = account_to_amount_space.split(line_trimmed).collect();
-            if trans.is_none() == true {
+            if trans.is_none() {
                 trans = Some(Transaction::new_default());
                 let mut date_payee = line_split[0].splitn(2, " ");
-
-                let mut naive_date = chrono::NaiveDate::parse_from_str(date_payee.next().unwrap(), "%Y-%m-%d").unwrap();
+                let naive_date = chrono::NaiveDate::parse_from_str(date_payee.next().unwrap(), "%Y-%m-%d").unwrap();
                 let date = chrono::Date::from_utc(naive_date, chrono::Utc);
                 let payee = date_payee.next().unwrap().to_string();
                 trans = Some(trans.unwrap().change_payee(payee));
                 trans = Some(trans.unwrap().set_date(date));
             } else {
-                let mut account: Account;
-                account =
+                let account: Account =
                     if line_split.len() >= 2 {
                         Account::new(line_split[0].to_string(), line_split[1].parse::<f64>().unwrap())
                     } else {
@@ -62,9 +57,6 @@ pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &[Transaction]) {
                 trans = Some(trans.unwrap().add_account(account));
             }
         }
-    }
-    for t in list_of_trans {
-        println!("{:?}", t)
     }
 }
 

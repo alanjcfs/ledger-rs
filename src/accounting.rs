@@ -1,5 +1,5 @@
 use num::BigRational;
-use chrono::prelude::{Date,Utc,FixedOffset};
+use chrono::prelude::{Date,Utc};
 
 #[derive(Debug,Clone)]
 pub struct Account {

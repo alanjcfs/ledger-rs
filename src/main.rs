@@ -22,6 +22,12 @@ fn main() {
 
     let contents = ledger::read(file).unwrap();
     let lines = contents.lines();
-    let mut ledger: Vec<Transaction> = Vec::new();
-    ledger::parse(lines, &ledger);
+    let mut ledger: Vec<Option<Transaction>> = Vec::new();
+    ledger::parse(lines, &mut ledger);
+    for t in ledger {
+        match t {
+            Some(u) => println!("{:?}", u),
+            None => { /* noop */ }
+        }
+    }
 }
