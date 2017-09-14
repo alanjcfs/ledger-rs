@@ -2,17 +2,29 @@ use num::BigRational;
 use chrono::prelude::{Date,Utc};
 
 #[derive(Debug,Clone)]
+pub enum Balance {
+    Amount(f64),
+    Empty
+}
+
+#[derive(Debug,Clone)]
 pub struct Account {
     name: String,
-    balance: f64
+    balance: Balance
 }
 
 impl Account {
-    pub fn new(s: String, f: f64) -> Account {
+    pub fn new(s: String, f: Balance) -> Account {
         Account { name: s, balance: f }
     }
     pub fn balance(self: &Account) -> f64 {
-        self.balance
+        match self.balance {
+            Balance::Amount(f) => f,
+            Balance::Empty => {
+                /* TODO: Should be the negation of other accounts in a transaction */
+                0.
+            }
+        }
     }
 }
 
@@ -38,12 +50,9 @@ impl Transaction {
     pub fn account_sum(self: &Transaction) -> f64 {
         self.account_changes.iter().fold(0., |acc, ref item| acc + item.balance())
     }
-    pub fn change_payee(mut self: Transaction, s: String) -> Transaction {
-        self.payee = s;
-        self
-    }
-    pub fn set_date(mut self: Transaction, d: Date<Utc>) -> Transaction {
-        self.date = d;
+    pub fn change_payee_and_date(mut self: Transaction, s: &String, d: &Date<Utc>) -> Transaction {
+        self.date = d.clone();
+        self.payee = s.clone();
         self
     }
 }
