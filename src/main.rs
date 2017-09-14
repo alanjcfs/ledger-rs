@@ -24,10 +24,20 @@ fn main() {
     let lines = contents.lines();
     let mut ledger: Vec<Option<Transaction>> = Vec::new();
     ledger::parse(lines, &mut ledger);
-    for t in ledger {
-        match t {
-            Some(u) => println!("{:?}", u),
-            None => { /* noop */ }
-        }
-    }
+
+    // When balance passed, print out transactions
+    //    20  Assets
+    //  -600    Bank of America
+    //    20    Cash
+    //   600    Savings
+    // -1720  Equity:Opening Balance
+    //  1720  Expenses
+    //   160    Food
+    //  1560    Rent
+    //  ----
+    //     0
+    //
+    // In each transaction, the accounts should add up to zero to be balanced.
+    // We need to store the total ins and outs of each account too.
+
 }

@@ -7,6 +7,15 @@ pub enum Balance {
     Empty
 }
 
+impl Balance {
+    pub fn is_empty(self: Balance) -> bool {
+        match self {
+            Balance::Amount(_) => false,
+            Balance::Empty => true
+        }
+    }
+}
+
 #[derive(Debug,Clone)]
 pub struct Account {
     name: String,
@@ -17,14 +26,8 @@ impl Account {
     pub fn new(s: String, f: Balance) -> Account {
         Account { name: s, balance: f }
     }
-    pub fn balance(self: &Account) -> f64 {
-        match self.balance {
-            Balance::Amount(f) => f,
-            Balance::Empty => {
-                /* TODO: Should be the negation of other accounts in a transaction */
-                0.
-            }
-        }
+    pub fn balance(self: &Account) -> &Balance {
+        &self.balance
     }
 }
 
@@ -47,12 +50,12 @@ impl Transaction {
         self.account_changes.push(a);
         self
     }
-    pub fn account_sum(self: &Transaction) -> f64 {
-        self.account_changes.iter().fold(0., |acc, ref item| acc + item.balance())
-    }
     pub fn change_payee_and_date(mut self: Transaction, s: &String, d: &Date<Utc>) -> Transaction {
         self.date = d.clone();
         self.payee = s.clone();
         self
+    }
+    pub fn account_changes(self: &Transaction) -> &Vec<Account> {
+        &self.account_changes
     }
 }
