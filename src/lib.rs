@@ -59,23 +59,24 @@ pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &mut Vec<Option<Transaction
     }
 }
 
-pub fn check_extra_empty_accounts(ledger: &Vec<Option<Transaction>>) {
-    for t in ledger {
+pub fn check_extra_empty_accounts(ledger: &Vec<Option<Transaction>>) -> &Vec<Option<Transaction>> {
+    for t in ledger.clone() {
         match t {
-            &Some(u) => {
-                if u.account_changes().into_iter().filter(|v| v.balance().is_empty() ).len() > 1 {
+            Some(ref u) => {
+                if u.account_changes().into_iter().filter(|v| { let bal = v.balance().clone(); bal.is_empty() }).count() > 1 {
                     panic!("No more than one null amount value")
                 }
             },
-            &None => { /* noop */ }
+            None => { /* noop */ }
         }
     }
+    &ledger
 }
 
-pub fn verify<'a>(ledger: &Vec<Option<Transaction>>) {
+pub fn verify<'a>(ledger: Vec<Option<Transaction>>) {
     for t in ledger {
         match t {
-            &Some(u) => {
+            Some(u) => {
                 let mut sum = 0.;
                 let mut empty = 0;
                 for a in u.account_changes() {
@@ -85,7 +86,7 @@ pub fn verify<'a>(ledger: &Vec<Option<Transaction>>) {
                     }
                 }
             },
-            &None => { /* noop */ }
+            None => { /* noop */ }
         }
     }
 }

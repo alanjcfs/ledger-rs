@@ -40,4 +40,6 @@ fn main() {
     // In each transaction, the accounts should add up to zero to be balanced.
     // We need to store the total ins and outs of each account too.
 
+    ledger::check_extra_empty_accounts(&ledger);
+    ledger::verify(ledger);
 }
