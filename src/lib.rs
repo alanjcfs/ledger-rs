@@ -99,7 +99,7 @@ fn change_payee_and_date(transaction: Option<Transaction>, payee: &String, date:
 mod tests {
     #[test]
     fn it_works() {
-        let read_file = super::read("examples/example.ledger").unwrap();
+        let read_file = super::read("examples/example.journal").unwrap();
         let lines: Vec<&str> = read_file.lines().collect();
         assert_eq!(lines[0], "; is a comment");
         assert_eq!(lines[1], "# also a comment");
