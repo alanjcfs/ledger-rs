@@ -18,12 +18,12 @@ fn main() {
         .subcommand(SubCommand::with_name("budget"))
         .get_matches();
 
-    let file = matches.value_of("file").unwrap_or("examples/example.ledger");
+    let file = matches.value_of("file").unwrap_or("examples/example.journal");
 
-    let contents = ledger::read(file).unwrap();
+    let contents = ledger::read::read(file).unwrap();
     let lines = contents.lines();
     let mut ledger: Vec<Option<Transaction>> = Vec::new();
-    ledger::parse(lines, &mut ledger);
+    ledger::parse::parse(lines, &mut ledger);
 
     // When balance passed, print out transactions
     //    20  Assets
@@ -41,5 +41,6 @@ fn main() {
     // We need to store the total ins and outs of each account too.
 
     ledger::check_extra_empty_accounts(&ledger);
-    ledger::verify(ledger);
+    ledger::verify(ledger.clone());
+    println!("{:?}", ledger);
 }
