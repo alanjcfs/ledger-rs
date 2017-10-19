@@ -2,69 +2,97 @@ use chrono::prelude::{Date, Utc};
 
 #[derive(Debug, Clone)]
 pub enum Balance {
-    Amount(f64),
-    Empty,
+    Price(f64),
+    NoPrice,
 }
 
-impl Balance {
-    pub fn is_empty(self: Balance) -> bool {
-        match self {
-            Balance::Amount(_) => false,
-            Balance::Empty => true,
+#[derive(Debug, Clone)]
+pub enum Status {
+    Cleared,
+    Pending,
+    Unmarked,
+}
+
+#[derive(Debug, Clone)]
+pub struct Account {
+    name: AccountName,
+}
+
+type AccountName = String;
+
+#[derive(Debug, Clone)]
+pub struct Posting<'a> {
+    transaction: &'a Transaction,
+    account: Account,
+    amount: Amount,
+}
+
+impl<'a> Posting<'a> {
+    pub fn new(transaction: &'a Transaction, account: Account, amount: Amount) -> Posting {
+        Posting {
+            transaction: transaction,
+            account: account,
+            amount: amount,
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Account {
-    name: String,
-    balance: Balance,
+pub struct Amount {
+    commodity: CommoditySymbol,
+    price: Balance,
 }
 
-impl Account {
-    pub fn new(s: String, f: Balance) -> Account {
-        Account {
-            name: s,
-            balance: f,
+impl Amount {
+    pub fn new(commodity: String, price: Balance) -> Amount {
+        Amount {
+            commodity: commodity,
+            price: price,
         }
     }
-    pub fn balance(self: &Account) -> &Balance {
-        &self.balance
+}
+
+type CommoditySymbol = String;
+
+impl Account {
+    pub fn new(s: String) -> Account {
+        Account {
+            name: s,
+        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Transaction {
-    payee: String,
     date: Date<Utc>,
-    account_changes: Vec<Account>,
+    edate: Option<Date<Utc>>,
+    status: Status,
+    code: String,
+    description: String,
 }
 
 impl Transaction {
     pub fn new_default() -> Transaction {
         Transaction {
-            payee: "".to_string(),
+            description: "".to_string(),
             date: Utc::today(),
-            account_changes: vec![],
+            edate: None,
+            status: Status::Unmarked,
+            code: "".to_string(),
         }
     }
-    pub fn new(p: String, d: Date<Utc>, a: Vec<Account>) -> Transaction {
+    pub fn new(desc: String, date: Date<Utc>) -> Transaction {
         Transaction {
-            payee: p,
-            date: d,
-            account_changes: a,
+            description: desc,
+            date: date,
+            edate: None,
+            status: Status::Unmarked,
+            code: "".to_string(),
         }
     }
-    pub fn add_account(mut self: Transaction, a: Account) -> Transaction {
-        self.account_changes.push(a);
-        self
-    }
-    pub fn change_payee_and_date(mut self: Transaction, s: &String, d: &Date<Utc>) -> Transaction {
+    pub fn change_description_and_date(mut self: Transaction, s: &String, d: &Date<Utc>) -> Transaction {
         self.date = d.clone();
-        self.payee = s.clone();
+        self.description = s.clone();
         self
-    }
-    pub fn account_changes(self: &Transaction) -> &Vec<Account> {
-        &self.account_changes
     }
 }

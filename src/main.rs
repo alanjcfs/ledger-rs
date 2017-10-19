@@ -27,7 +27,8 @@ fn main() {
     let contents = ledger::read::read(file).unwrap();
     let lines = contents.lines();
     let mut ledger: Vec<Option<Transaction>> = Vec::new();
-    ledger::parse::parse(lines, &mut ledger);
+    let mut postings: Vec<Posting> = Vec::new();
+    ledger::parse::parse(lines, &mut ledger, &mut postings);
 
     // When balance passed, print out transactions
     //    20  Assets
@@ -44,7 +45,6 @@ fn main() {
     // In each transaction, the accounts should add up to zero to be balanced.
     // We need to store the total ins and outs of each account too.
 
-    ledger::check_extra_empty_accounts(&ledger);
-    ledger::verify(ledger.clone());
     println!("{:?}", ledger);
+    println!("{:?}", postings);
 }

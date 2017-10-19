@@ -2,18 +2,9 @@ extern crate chrono;
 
 use regex::Regex;
 use std;
-use accounting::{Account, Balance, Transaction};
+use accounting::{Account, Balance, Transaction, Posting, Amount};
 
-#[allow(dead_code)]
-enum Parser {
-    Blank,
-    Comment,
-    CommentStart,
-    CommentEnd,
-    Transaction,
-}
-
-pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &mut Vec<Option<Transaction>>) {
+pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &mut Vec<Option<Transaction>>, postings: Vec<Posting>) {
     let mut trans: Option<Transaction> = None;
     let account_to_amount_space = Regex::new(r" {2,}|\t+").unwrap();
 
@@ -34,33 +25,39 @@ pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &mut Vec<Option<Transaction
         } else {
             let line_split: Vec<&str> = account_to_amount_space.split(line_trimmed).collect();
             if trans.is_none() {
-                trans = Some(Transaction::new_default());
-                let mut date_payee = line_split[0].splitn(2, " ");
+                let mut date_description = line_split[0].splitn(2, " ");
                 let naive_date =
-                    chrono::NaiveDate::parse_from_str(date_payee.next().unwrap(), "%Y-%m-%d")
+                    chrono::NaiveDate::parse_from_str(date_description.next().unwrap(), "%Y-%m-%d")
                         .unwrap();
                 let date = chrono::Date::from_utc(naive_date, chrono::Utc);
-                let payee = date_payee.next().unwrap().to_string();
-                trans = change_payee_and_date(trans, &payee, &date);
+                let description = date_description.next().unwrap().to_string();
+                trans = Some(Transaction::new(description, date));
             } else {
-                let account: Account = if line_split.len() >= 2 {
-                    Account::new(
-                        line_split[0].to_string(),
-                        Balance::Amount(line_split[1].parse::<f64>().unwrap()),
-                    )
-                } else {
-                    Account::new(line_split[0].to_string(), Balance::Empty)
-                };
-                trans = trans.map(|trans| trans.add_account(account));
+                let unwrapped_transaction = trans.clone().unwrap();
+                let posting: Posting =
+                    if line_split.len() >= 2 {
+                        Posting::new(
+                            &unwrapped_transaction,
+                            Account::new(line_split[0].to_string()),
+                            Amount::new("$".to_string(), Balance::Price(line_split[1].parse::<f64>().unwrap())),
+                        )
+                    } else {
+                        Posting::new(
+                            &unwrapped_transaction,
+                            Account::new(line_split[0].to_string()),
+                            Amount::new("$".to_string(), Balance::NoPrice),
+                        )
+                    };
+                postings.push(posting);
             }
         }
     }
 }
 
-fn change_payee_and_date(
+fn change_description_and_date(
     transaction: Option<Transaction>,
-    payee: &String,
+    description: &String,
     date: &chrono::Date<chrono::Utc>,
 ) -> Option<Transaction> {
-    transaction.map(|transaction| transaction.change_payee_and_date(payee, date))
+    transaction.map(|transaction| transaction.change_description_and_date(description, date))
 }
