@@ -24,11 +24,11 @@ fn main() {
         .value_of("file")
         .unwrap_or("examples/example.journal");
 
-    let contents = ledger::read::read(file).unwrap();
-    let lines = contents.lines();
-    let mut ledger: Vec<Option<Transaction>> = Vec::new();
-    let mut postings: Vec<Posting> = Vec::new();
-    ledger::parse::parse(lines, &mut ledger, &mut postings);
+    // let contents = ledger::read::read(file).unwrap();
+    // let lines = contents.lines();
+    // let mut ledger: Vec<Option<Transaction>> = Vec::new();
+    // let mut postings: Vec<Posting> = Vec::new();
+    // ledger::parse::parse(lines, &mut ledger, &mut postings);
 
     // When balance passed, print out transactions
     //    20  Assets
@@ -45,6 +45,16 @@ fn main() {
     // In each transaction, the accounts should add up to zero to be balanced.
     // We need to store the total ins and outs of each account too.
 
-    println!("{:?}", ledger);
-    println!("{:?}", postings);
+    // println!("{:?}", ledger);
+    // println!("{:?}", postings);
+
+    let result = ledger::lexer::lex_file(file);
+    match result {
+        Ok(res) => {
+            println!("{:?}", res);
+        }
+        Err(res) => {
+            println!("Could not open and read file");
+        }
+    }
 }

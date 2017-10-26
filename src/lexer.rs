@@ -4,6 +4,8 @@ use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;
 use std::num::ParseFloatError;
 use status::Status;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Error};
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
@@ -13,14 +15,32 @@ pub enum Token {
     Date(String),
     Money(f64), // For now, I hark too well to the problems of floats
     Currency(String),
-    Status(Status)
+    Status(Status),
+    Newline
+}
+
+pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
+    let f = File::open(s)?;
+    let file = BufReader::new(&f);
+    let mut tokens: Vec<Token> = Vec::new();
+
+    for line in file.lines() {
+        match line {
+            Ok(line) => {
+                tokens.append(&mut lex_line(&line));
+                tokens.push(Token::Newline);
+            }
+            Err(_) => { panic!("Perhaps corrupted text file"); }
+        }
+    }
+    Ok(tokens)
 }
 
 pub fn lex_line<'a>(line: &'a String) -> Vec<Token> {
     let mut w = line.split_word_bounds().peekable();
     let mut tokens: Vec<Token> = Vec::new();
 
-    let comment_chars = [Some(";")];
+    let comment_chars = [Some(";"), Some("#"), Some("%"), Some("|")];
     let integer_regex = Regex::new(r"^\d+$").unwrap();
     let date_dividers = [Some(&"/"), Some(&"-")];
     let currencies = [Some("$"), Some("USD")];
