@@ -1,16 +1,10 @@
 use chrono::prelude::{Date, Utc};
+use status::Status;
 
 #[derive(Debug, Clone)]
 pub enum Balance {
     Price(f64),
     NoPrice,
-}
-
-#[derive(Debug, Clone)]
-pub enum Status {
-    Cleared,
-    Pending,
-    Unmarked,
 }
 
 #[derive(Debug, Clone)]
