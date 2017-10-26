@@ -23,12 +23,12 @@ type AccountName = String;
 #[derive(Debug, Clone)]
 pub struct Posting<'a> {
     transaction: &'a Transaction,
-    account: Account,
+    account: &'a Account,
     amount: Amount,
 }
 
 impl<'a> Posting<'a> {
-    pub fn new(transaction: &'a Transaction, account: Account, amount: Amount) -> Posting {
+    pub fn new(transaction: &'a Transaction, account: &'a Account, amount: Amount) -> Posting<'a> {
         Posting {
             transaction: transaction,
             account: account,

@@ -1,10 +1,12 @@
 extern crate chrono;
 extern crate num;
 extern crate regex;
+extern crate unicode_segmentation;
 
 pub mod accounting;
 pub mod read;
 pub mod parse;
+pub mod lexer;
 
 #[cfg(test)]
 mod tests {

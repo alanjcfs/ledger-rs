@@ -2,11 +2,16 @@ extern crate chrono;
 
 use regex::Regex;
 use std;
+
+#[allow(unused_imports)]
 use accounting::{Account, Balance, Transaction, Posting, Amount};
 
-pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &mut Vec<Option<Transaction>>, postings: Vec<Posting>) {
+#[allow(unused_mut, unused_variables, dead_code)]
+pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &mut Vec<Option<Transaction>>, mut postings: &Vec<Posting>) {
     let mut trans: Option<Transaction> = None;
     let account_to_amount_space = Regex::new(r" {2,}|\t+").unwrap();
+    let _unwrapped_transaction: Transaction;
+    let _account: Account;
 
     for line in lines {
         let line_trimmed = line.trim();
@@ -33,27 +38,29 @@ pub fn parse<'a>(lines: std::str::Lines<'a>, ledger: &mut Vec<Option<Transaction
                 let description = date_description.next().unwrap().to_string();
                 trans = Some(Transaction::new(description, date));
             } else {
-                let unwrapped_transaction = trans.clone().unwrap();
-                let posting: Posting =
-                    if line_split.len() >= 2 {
-                        Posting::new(
-                            &unwrapped_transaction,
-                            Account::new(line_split[0].to_string()),
-                            Amount::new("$".to_string(), Balance::Price(line_split[1].parse::<f64>().unwrap())),
-                        )
-                    } else {
-                        Posting::new(
-                            &unwrapped_transaction,
-                            Account::new(line_split[0].to_string()),
-                            Amount::new("$".to_string(), Balance::NoPrice),
-                        )
-                    };
-                postings.push(posting);
+                // unwrapped_transaction = trans.clone().unwrap();
+                // account = Account::new(line_split[0].to_string());
+                // let posting: Posting =
+                //     if line_split.len() >= 2 {
+                //         Posting::new(
+                //             &unwrapped_transaction,
+                //             &account,
+                //             Amount::new("$".to_string(), Balance::Price(line_split[1].parse::<f64>().unwrap())),
+                //         )
+                //     } else {
+                //         Posting::new(
+                //             &unwrapped_transaction,
+                //             &account,
+                //             Amount::new("$".to_string(), Balance::NoPrice),
+                //         )
+                //     };
+                // postings.push(posting);
             }
         }
     }
 }
 
+#[allow(dead_code)]
 fn change_description_and_date(
     transaction: Option<Transaction>,
     description: &String,

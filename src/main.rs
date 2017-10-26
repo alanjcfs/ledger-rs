@@ -2,7 +2,7 @@ extern crate clap;
 extern crate ledger;
 
 use clap::{App, Arg, SubCommand};
-use ledger::accounting::Transaction;
+use ledger::accounting::{Transaction, Posting};
 
 fn main() {
     let matches = App::new("ledger-rs")
