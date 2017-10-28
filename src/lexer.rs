@@ -40,7 +40,7 @@ pub fn lex_line<'a>(line: &'a String) -> Vec<Token> {
     let mut w = line.split_word_bounds().peekable();
     let mut tokens: Vec<Token> = Vec::new();
 
-    let comment_chars = [Some(";"), Some("#"), Some("%"), Some("|")];
+    let symbol_chars = [Some(";"), Some("#"), Some("%"), Some("|"), Some("*")];
     let integer_regex = Regex::new(r"^\d+$").unwrap();
     let date_dividers = [Some(&"/"), Some(&"-")];
     let currencies = [Some("$"), Some("USD")];
@@ -48,9 +48,10 @@ pub fn lex_line<'a>(line: &'a String) -> Vec<Token> {
     while w.peek().is_some() {
         let token = w.next();
 
-        // ; is treated as a comment and we ignore the rest of the line
-        if comment_chars.contains(&token) {
-            break;
+        // We look at symbols, which depending on context, can be comments or meaningful
+        if symbol_chars.contains(&token) {
+            tokens.push(Token::Symbol(token.unwrap()));
+            continue;
         }
 
         // Multiple spaces are separator
@@ -98,17 +99,6 @@ pub fn lex_line<'a>(line: &'a String) -> Vec<Token> {
             tokens.push(Token::Currency(token.unwrap().to_owned()));
             continue;
         }
-
-
-        if Some("*") == token {
-            tokens.push(Token::Status(Status::Cleared));
-            continue;
-        }
-        if Some("!") == token {
-            tokens.push(Token::Status(Status::Pending));
-            continue;
-        }
-
 
 
         // Single space or word
