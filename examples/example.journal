@@ -9,37 +9,46 @@
 ;   ! = pending
 ; end comment
 
+Assets:Cash 500
+
 2013-01-01 * Beginning Balance
-  Assets:Cash  520
-  Assets:Savings  1200
-  Assets:Bank of America  700
+  Assets:Cash  $1
+  Assets:Savings  $2
+  Assets:Checking  $3
   Equity:Opening Balance
 
 2013-01-01 * Rent for January
-  Expenses:Rent  600.00
+  Expenses:Rent  $1.01
   Assets:Savings
 
 ; 2013-01-02 Client invoice ; secondary date is estimated date of payment
 
 ; Assert cash
 2014-01-01 * KFC
-  Expenses:Food  20
-  Assets:Cash  -20
+  Expenses:Food  $0.25
+  Assets:Cash  -$0.25
 
 2014-01-02 * KFC
-  Expenses:Food  40
-  Expenses:Rent  440
-  Assets:Cash  -480
+  Expenses:Food  $.04
+  Assets:Cash
 
 2014-01-03 ~ Monthly
-  Expenses:Rent  500
-  Expenses:Food  100
-  Assets:Bank of America
+  Expenses:Rent  $1
+  Expenses:Food  $0.01
+  Assets:Checking
+
+2014-01-04 * Income
+  Assets:Savings  $5
+  Income:Salary
+
+2014-02-04 * Income
+  Assets:Savings  $5
+  Income:Salary
 
 ; Must handle the following:
 ; If date doesn't exist
 ; ~ Monthly
 ;   Expenses:Rent  500
-;   Assets:Bank of America
+;   Assets:Checking
 
 ;
