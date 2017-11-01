@@ -5,7 +5,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use std::num::ParseFloatError;
 use status::Status;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Error};
+use std::io::{BufRead, BufReader, Error, Lines};
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
@@ -16,15 +16,21 @@ pub enum Token {
     Money(f64), // For now, I hark too well to the problems of floats
     Currency(String),
     Status(Status),
-    Newline
+    Symbol(String),
+    Newline,
 }
 
 pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
     let f = File::open(s)?;
     let file = BufReader::new(&f);
+    let results = lex_lines(file.lines())?;
+    Ok(results)
+}
+
+pub fn lex_lines<T: BufRead>(lines: Lines<T>) -> Result<Vec<Token>, Error> {
     let mut tokens: Vec<Token> = Vec::new();
 
-    for line in file.lines() {
+    for line in lines {
         match line {
             Ok(line) => {
                 tokens.append(&mut lex_line(&line));
@@ -50,7 +56,7 @@ pub fn lex_line<'a>(line: &'a String) -> Vec<Token> {
 
         // We look at symbols, which depending on context, can be comments or meaningful
         if symbol_chars.contains(&token) {
-            tokens.push(Token::Symbol(token.unwrap()));
+            tokens.push(Token::Symbol(token.unwrap().to_owned()));
             continue;
         }
 
@@ -169,5 +175,11 @@ mod tests {
                 Token::Money(100.25f64),
             ]
         );
+    }
+
+    #[test]
+    fn test_lex_file() {
+        // TODO: Learn how one would test the ability to lex multiple lines. Probably not necessary
+        // to do because we can trust BufRead to behave correctly.
     }
 }

@@ -2,7 +2,7 @@ extern crate clap;
 extern crate ledger;
 
 use clap::{App, Arg, SubCommand};
-use ledger::accounting::{Transaction, Posting};
+// use ledger::accounting::{Transaction, Posting};
 
 fn main() {
     let matches = App::new("ledger-rs")
@@ -54,7 +54,7 @@ fn main() {
             println!("{:?}", res);
         }
         Err(res) => {
-            println!("Could not open and read file");
+            println!("Could not open and read file: {}", res);
         }
     }
 }
