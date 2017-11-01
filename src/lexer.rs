@@ -3,7 +3,6 @@ extern crate unicode_segmentation;
 use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;
 use std::num::ParseFloatError;
-use status::Status;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error, Lines};
 
@@ -15,9 +14,8 @@ pub enum Token {
     Date(String),
     Money(f64), // For now, I hark too well to the problems of floats
     Currency(String),
-    Status(Status),
     Symbol(String),
-    Newline,
+    Newline(usize),
 }
 
 pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
@@ -30,11 +28,11 @@ pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
 pub fn lex_lines<T: BufRead>(lines: Lines<T>) -> Result<Vec<Token>, Error> {
     let mut tokens: Vec<Token> = Vec::new();
 
-    for line in lines {
+    for (i, line) in lines.enumerate() {
         match line {
             Ok(line) => {
                 tokens.append(&mut lex_line(&line));
-                tokens.push(Token::Newline);
+                tokens.push(Token::Newline(i+1));
             }
             Err(_) => { panic!("Perhaps corrupted text file"); }
         }
