@@ -9,38 +9,46 @@ use lexer::Token;
 
 #[derive(PartialEq)]
 enum State {
-    Nothing,
+    FullBreak,
+    PartialBreak,
     Date,
-    Account
+    Symbol,
+    Description,
+    Account,
+    Money,
+    Currency
 }
 
+// Now to confabulate these disgraced and shattered things into a story...
+// of money.
+// Must validate using state machine;
 pub fn parse<'a>(tokens: Vec<Token>) {
-    // Now to confabulate these broken pieces into a story of money.
-
-    // Perhaps even at the parser level, we can only construct an abstract syntax tree?
-    let mut state: State = State::Nothing;
-    let line_number: usize = 1;
+    let mut line_number = 1;
+    let mut state = State::FullBreak;
 
     for token in tokens {
         match token {
-            Token::Separator => {
+            Token::Date => {
                 if state == State::Nothing {
-                    panic!("Unexpected whitespace at beginning of line: line {}", line_number)
-                }
-                else {
-                    // Do Something Else
+                    state = State::Date
                 }
             }
-            Token::Space => {}
-            Token::Word(_string) => {}
-            Token::Date(_string) => {}
-            Token::Money(_amount) => {}
-            Token::Currency(_string) => {}
-            Token::Symbol(_string) => {}
-            Token::Newline(_line) => {}
+            Token::Separator => {
+                if state == State::Nothing {
+                    panic!("Unexpected whitespace at line {}", line_number)
+                }
+                else if state == State::PartialBreak {
+
+                }
+            }
         }
     }
 }
+
+
+
+
+
 
 #[cfg(test)]
 mod tests {
