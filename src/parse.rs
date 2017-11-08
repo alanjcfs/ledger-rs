@@ -5,7 +5,7 @@ use std;
 
 #[allow(unused_imports)]
 use accounting::{Account, Balance, Transaction, Posting, Amount};
-use lexer::Token;
+use lexer::TokenType;
 
 #[derive(PartialEq)]
 enum State {
@@ -22,27 +22,10 @@ enum State {
 // Now to confabulate these disgraced and shattered things into a story...
 // of money.
 // Must validate using state machine;
-pub fn parse<'a>(tokens: Vec<Token>) {
+pub fn parse<'a>(tokens: Vec<TokenType>) {
     let mut line_number = 1;
     let mut state = State::FullBreak;
 
-    for token in tokens {
-        match token {
-            Token::Date => {
-                if state == State::Nothing {
-                    state = State::Date
-                }
-            }
-            Token::Separator => {
-                if state == State::Nothing {
-                    panic!("Unexpected whitespace at line {}", line_number)
-                }
-                else if state == State::PartialBreak {
-
-                }
-            }
-        }
-    }
 }
 
 
@@ -56,7 +39,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_panic_on_newline_with_indentation() {
-        parse(vec![Token::Separator]);
+        parse(vec![TokenType::Separator]);
     }
 }
 
