@@ -4,7 +4,9 @@ use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;
 use std::num::ParseFloatError;
 use std::fs::File;
-use std::io::{Read, BufReader, Error};
+use std::io::{Read, BufReader, Error, BufRead};
+use std::iter::Peekable;
+use std;
 
 #[derive(Debug, PartialEq)]
 pub enum TokenType {
@@ -12,9 +14,10 @@ pub enum TokenType {
     Colon, Semicolon, Hash, Modulo, Pipe, Star, Bang, Equal, Tilde,
 
     Indentation,
-    Newline,
     String,
     Number,
+    Date,
+    Newline,
     EOF,
 }
 
@@ -39,9 +42,7 @@ fn error(line: usize, message: &str) {
 pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
     let f = File::open(s)?;
     let mut file = BufReader::new(&f);
-    let mut string: String = "".to_string();
-    file.read_to_string(&mut string)?;
-    let results = lex(&string)?;
+    let results = lex_lines(file.lines())?;
     Ok(results)
 }
 
@@ -55,102 +56,184 @@ impl AddToken for Vec<Token> {
     }
 }
 
-fn add_token(tokens: &mut Vec<Token>, token_type: TokenType, grapheme: &str, line: usize) {
-    tokens.push(Token::new(token_type, grapheme.to_string(), None, line));
+fn lex_lines<T: BufRead>(lines: std::io::Lines<T>) -> Result<Vec<Token>, Error> {
+    let mut tokens: Vec<Token> = Vec::new();
+    for (i, line) in lines.enumerate() {
+        match line {
+            Ok(line) => {
+                tokens.append(&mut lex(i, &line));
+                tokens.add_token(TokenType::Newline, &"\n", i);
+            }
+            Err(_) => { error(i, "Corrupted text file that cannot be enumerated"); }
+        }
+    }
+    Ok(tokens)
 }
 
-pub fn lex(string: &String) -> Result<Vec<Token>, Error> {
-    let mut line: usize = 1;
+#[derive(PartialEq)]
+enum Begin {
+    Nothing,
+    Space,
+    Date,
+    Comment,
+}
+
+pub fn lex(idx: usize, string: &String) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut graphemes = UnicodeSegmentation::graphemes(&string[..], true).peekable();
     let integer_regex = Regex::new(r"^\d$").unwrap();
-    let alphanumeric_regex = Regex::new(r"^[a-zA-Z0-9]$")
+    let date_regex = Regex::new(r"^[0-9\-/]$").unwrap();
+    let any_character = Regex::new(r"^.$").unwrap();
     let date_dividers = [Some(&"/"), Some(&"-")];
-    let mut handled_date = false;
+    let mut beginning = Begin::Nothing;
 
     while graphemes.peek().is_some() {
         let grapheme = graphemes.next().unwrap();
 
-        match grapheme {
-            ":" => {
-                tokens.add_token(TokenType::Colon, grapheme, line);
-            }
-            ";" => {
-                tokens.add_token(TokenType::Semicolon, grapheme, line);
-            }
-            "#" => {
-                tokens.add_token(TokenType::Hash, grapheme, line);
-            }
-            "%" => {
-                tokens.add_token(TokenType::Modulo, grapheme, line);
-            }
-            "|" => {
-                tokens.add_token(TokenType::Pipe, grapheme, line);
-            }
-            "*" => {
-                tokens.add_token(TokenType::Star, grapheme, line);
-            }
-            "!" => {
-                tokens.add_token(TokenType::Bang, grapheme, line);
-            }
-            "=" => {
-                tokens.add_token(TokenType::Equal, grapheme, line)
-            }
-            "~" => {
-                tokens.add_token(TokenType::Tilde, grapheme, line)
-            }
-            " " => {
-                let mut s = " ".to_string();
-                if graphemes.peek() == Some(&" ") {
-                    while graphemes.peek() == Some(&" ") {
-                        s.push_str(graphemes.next().unwrap());
-                    }
-                    tokens.add_token(TokenType::Indentation, &s, line);
-                } else {
-                    while graphemes.peek() != Some(&"\n") {
-                        s.push_str(graphemes.next().unwrap());
-                    }
-                    tokens.add_token(TokenType::String, &s, line);
-                }
-            }
-            "\t" => {
-                let mut s = "\t".to_string();
-                while graphemes.peek() == Some(&"\t") {
-                    s.push_str(graphemes.next().unwrap());
-                }
-                tokens.add_token(TokenType::Indentation, &s, line)
-            }
-            digit if integer_regex.is_match(digit) => {
-                let mut s = digit.to_string();
-                while integer_regex.is_match(graphemes.peek().unwrap()) {
-                    s.push_str(graphemes.next().unwrap());
-                    // Handle / and - that are dates
-                    if date_dividers.contains(&graphemes.peek()) {
-                        s.push_str(graphemes.next().unwrap());
-                    }
-                    // Handle dot in numbers with decimal points
-                    // TODO: Multiple decimal points
-                    if graphemes.peek() == Some(&".") {
-                        let dot = graphemes.next();
-                        if integer_regex.is_match(graphemes.peek().unwrap()) {
-                            s.push_str(dot.unwrap());
+        if beginning == Begin::Nothing {
+            if integer_regex.is_match(grapheme) {
+                beginning = Begin::Date;
+                // process_as_date_description(&mut beginning, &mut graphemes);
+
+                let mut date_string = grapheme.to_string();
+                let mut current_string = "".to_string();
+                while graphemes.peek().is_some() && graphemes.peek() != Some(&"\n") {
+                    let s = graphemes.next().unwrap();
+                    match s {
+                        date_digit if date_regex.is_match(s) => {
+                            if current_string.is_empty() {
+                                date_string.push_str(date_digit);
+                            }
+                            else {
+                                current_string.push_str(date_digit);
+                            }
+                        }
+                        "*" => {
+                            if current_string.is_empty() {
+                                tokens.add_token(TokenType::Star, &"*".to_string(), idx);
+                            }
+                            else {
+                                current_string.push_str("*");
+                            }
+                        }
+                        "!" => {
+                            if current_string.is_empty() {
+                                tokens.add_token(TokenType::Bang, &"!".to_string(), idx);
+                            }
+                            else {
+                                current_string.push_str("*");
+                            }
+                        }
+                        " " => {
+                            if current_string.is_empty() {
+                                tokens.add_token(TokenType::Date, &date_string, idx);
+                                date_string.clear();
+                            }
+                            else {
+                                current_string.push_str(" ");
+                            }
+                        }
+                        any_char if any_character.is_match(s) => {
+                            current_string.push_str(any_char);
+                        }
+                        _ => {
+                            error(idx, &format!("Unexpected character {}", s))
                         }
                     }
                 }
+                beginning = Begin::Nothing;
             }
-            "\n" => {
-                tokens.add_token(TokenType::Newline, &s, line);
-                line += 1;
+            else if grapheme == " " {
+                beginning = Begin::Space;
+                // process_as_account(&mut beginning, &mut graphemes);
+
+                let mut account_string = "".to_string();
+                let mut money = "".to_string();
+                while graphemes.peek().is_some() {
+                    let s = graphemes.next().unwrap();
+                    match s {
+                        " " => {
+                            if money.is_empty() {
+                                if graphemes.peek() == Some(&" ") {
+                                    tokens.add_token(TokenType::Indentation, &account_string, idx);
+                                    account_string.clear();
+                                }
+                                else {
+                                    account_string.push_str(s);
+                                }
+                            }
+                        }
+                        any_char if any_character.is_match(s) => {
+                            if account_string.is_empty() {
+
+                            }
+                        }
+                        _ => {
+
+                        }
+                    }
+                }
+
+                beginning = Begin::Nothing;
             }
-            _ => {
-                error(line, "Unexpected character.");
+            else {
+                beginning = Begin::Comment;
+                // process_as_comment_line(&mut beginning, &mut graphemes);
+                beginning = Begin::Nothing;
             }
         }
     }
 
-    tokens.push(Token::new(TokenType::EOF, "".to_string(), None, line));
+    tokens.push(Token::new(TokenType::EOF, "".to_string(), None, idx));
 
 
+    // match grapheme {
+    //     // If it is a space, check if followed by another space and use that as indentation
+    //     // Otherwise, add to current_string
+    //     " " => {
+    //         if graphemes.peek() == Some(&" ") {
+    //             tokens.add_token(TokenType::String, &current_string, line);
+    //             current_string.clear();
+    //
+    //             let mut s = "".to_string();
+    //             s.push_str(grapheme);
+    //             while graphemes.peek() == Some(&" ") {
+    //                 s.push_str(graphemes.next().unwrap());
+    //             }
+    //         }
+    //     }
+    //     "\t" => {
+    //         let mut s = "\t".to_string();
+    //         while graphemes.peek() == Some(&"\t") {
+    //             s.push_str(graphemes.next().unwrap());
+    //         }
+    //     }
+    //     digit if integer_regex.is_match(digit) => {
+    //         let mut s = digit.to_string();
+    //         while integer_regex.is_match(graphemes.peek().unwrap()) {
+    //             s.push_str(graphemes.next().unwrap());
+    //             // Handle / and - that are dates
+    //             if date_dividers.contains(&graphemes.peek()) {
+    //                 s.push_str(graphemes.next().unwrap());
+    //             }
+    //             // Handle dot in numbers with decimal points
+    //             // TODO: Multiple decimal points
+    //             if graphemes.peek() == Some(&".") {
+    //                 let dot = graphemes.next();
+    //                 if integer_regex.is_match(graphemes.peek().unwrap()) {
+    //                     s.push_str(dot.unwrap());
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     "\n" => {
+    //         tokens.add_token(TokenType::Newline, &grapheme, line);
+    //         line += 1;
+    //     }
+    //     _ => {
+    //         error(line, "Unexpected character.");
+    //     }
+    // }
 
     //
     // let symbol_chars = [Some(";"), Some("#"), Some("%"), Some("|"), Some("*")];
@@ -218,7 +301,7 @@ pub fn lex(string: &String) -> Result<Vec<Token>, Error> {
     //     tokens.push(TokenType::Word(token.unwrap().to_owned()));
     // }
 
-    Ok(tokens)
+    tokens
 }
 
 #[cfg(test)]
