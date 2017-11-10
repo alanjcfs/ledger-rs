@@ -85,101 +85,60 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
     let date_regex = Regex::new(r"^[0-9\-/]$").unwrap();
     let any_character = Regex::new(r"^.$").unwrap();
     let date_dividers = [Some(&"/"), Some(&"-")];
-    let mut beginning = Begin::Nothing;
+    let mut current_string = "".to_string();
 
     while graphemes.peek().is_some() {
         let grapheme = graphemes.next().unwrap();
 
-        if beginning == Begin::Nothing {
-            if integer_regex.is_match(grapheme) {
-                beginning = Begin::Date;
-                // process_as_date_description(&mut beginning, &mut graphemes);
-
-                let mut date_string = grapheme.to_string();
-                let mut current_string = "".to_string();
-                while graphemes.peek().is_some() && graphemes.peek() != Some(&"\n") {
-                    let s = graphemes.next().unwrap();
-                    match s {
-                        date_digit if date_regex.is_match(s) => {
-                            if current_string.is_empty() {
-                                date_string.push_str(date_digit);
-                            }
-                            else {
-                                current_string.push_str(date_digit);
-                            }
-                        }
-                        "*" => {
-                            if current_string.is_empty() {
-                                tokens.add_token(TokenType::Star, &"*".to_string(), idx);
-                            }
-                            else {
-                                current_string.push_str("*");
-                            }
-                        }
-                        "!" => {
-                            if current_string.is_empty() {
-                                tokens.add_token(TokenType::Bang, &"!".to_string(), idx);
-                            }
-                            else {
-                                current_string.push_str("*");
-                            }
-                        }
-                        " " => {
-                            if current_string.is_empty() {
-                                tokens.add_token(TokenType::Date, &date_string, idx);
-                                date_string.clear();
-                            }
-                            else {
-                                current_string.push_str(" ");
-                            }
-                        }
-                        any_char if any_character.is_match(s) => {
-                            current_string.push_str(any_char);
-                        }
-                        _ => {
-                            error(idx, &format!("Unexpected character {}", s))
+        match grapheme {
+            " " => {
+                if graphemes.peek() == Some(&" ") {
+                    if !current_string.is_empty() {
+                        tokens.add_token(TokenType::String, &current_string, idx);
+                        current_string.clear();
+                    }
+                    let mut s = "".to_string();
+                    s.push_str(grapheme);
+                    while graphemes.peek() == Some(&" ") {
+                        s.push_str(graphemes.next().unwrap());
+                    }
+                    tokens.add_token(TokenType::Indentation, &s, idx);
+                }
+                else {
+                    current_string.push_str(grapheme);
+                }
+            }
+            "\t" => {
+                if !current_string.is_empty() {
+                    tokens.add_token(TokenType::String, &current_string, idx);
+                    current_string.clear();
+                }
+                let mut s = "\t".to_string();
+                while graphemes.peek() == Some(&"\t") {
+                    s.push_str(graphemes.next().unwrap());
+                }
+                tokens.add_token(TokenType::Indentation, &s, idx)
+            }
+            digit if integer_regex.is_match(digit) => {
+                let mut s = digit.to_string();
+                while integer_regex.is_match(graphemes.peek().unwrap_or(&"r")) {
+                    s.push_str(graphemes.next().unwrap());
+                    // Handle / and - that are dates
+                    if date_dividers.contains(&graphemes.peek()) {
+                        s.push_str(graphemes.next().unwrap());
+                    }
+                    // Handle dot in numbers with decimal points
+                    // TODO: Multiple decimal points
+                    if graphemes.peek() == Some(&".") {
+                        let dot = graphemes.next();
+                        if integer_regex.is_match(graphemes.peek().unwrap()) {
+                            s.push_str(dot.unwrap());
                         }
                     }
                 }
-                beginning = Begin::Nothing;
             }
-            else if grapheme == " " {
-                beginning = Begin::Space;
-                // process_as_account(&mut beginning, &mut graphemes);
-
-                let mut account_string = "".to_string();
-                let mut money = "".to_string();
-                while graphemes.peek().is_some() {
-                    let s = graphemes.next().unwrap();
-                    match s {
-                        " " => {
-                            if money.is_empty() {
-                                if graphemes.peek() == Some(&" ") {
-                                    tokens.add_token(TokenType::Indentation, &account_string, idx);
-                                    account_string.clear();
-                                }
-                                else {
-                                    account_string.push_str(s);
-                                }
-                            }
-                        }
-                        any_char if any_character.is_match(s) => {
-                            if account_string.is_empty() {
-
-                            }
-                        }
-                        _ => {
-
-                        }
-                    }
-                }
-
-                beginning = Begin::Nothing;
-            }
-            else {
-                beginning = Begin::Comment;
-                // process_as_comment_line(&mut beginning, &mut graphemes);
-                beginning = Begin::Nothing;
+            _ => {
+                println!("Something else")
             }
         }
     }
