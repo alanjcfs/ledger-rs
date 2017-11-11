@@ -1,55 +1,29 @@
 extern crate chrono;
 
 use regex::Regex;
-use std;
 
 #[allow(unused_imports)]
 use accounting::{Account, Balance, Transaction, Posting, Amount};
-use lexer::Token;
+use lexer::TokenType;
 
-#[derive(PartialEq)]
-enum State {
-    Nothing,
-    Date,
-    Account
+// Now to confabulate these disgraced and shattered things into a story...
+// of money.
+// Must validate using state machine;
+pub fn parse<'a>(tokens: Vec<TokenType>) {
 }
 
-pub fn parse<'a>(tokens: Vec<Token>) {
-    // Now to confabulate these broken pieces into a story of money.
 
-    // Perhaps even at the parser level, we can only construct an abstract syntax tree?
-    let mut state: State = State::Nothing;
-    let line_number: usize = 1;
 
-    for token in tokens {
-        match token {
-            Token::Separator => {
-                if state == State::Nothing {
-                    panic!("Unexpected whitespace at beginning of line: line {}", line_number)
-                }
-                else {
-                    // Do Something Else
-                }
-            }
-            Token::Space => {}
-            Token::Word(_string) => {}
-            Token::Date(_string) => {}
-            Token::Money(_amount) => {}
-            Token::Currency(_string) => {}
-            Token::Symbol(_string) => {}
-            Token::Newline(_line) => {}
-        }
-    }
-}
+
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    #[test]
-    #[should_panic]
-    fn test_panic_on_newline_with_indentation() {
-        parse(vec![Token::Separator]);
-    }
+    // use super::*;
+    // #[test]
+    // #[should_panic]
+    // fn test_panic_on_newline_with_indentation() {
+        // parse(vec![TokenType::Indentation]);
+    // }
 }
 
 // let date = chrono::Date::from_utc(naive_date, chrono::Utc);
