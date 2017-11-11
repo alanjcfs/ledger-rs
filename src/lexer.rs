@@ -13,6 +13,11 @@ pub enum TokenType {
     // Single-character tokens
     Colon, Semicolon, Hash, Modulo, Pipe, Star, Bang, Equal, Tilde,
 
+    Currency,
+    Money,
+    Description,
+    AccountName,
+    Status,
     Indentation,
     String,
     Number,
@@ -21,17 +26,17 @@ pub enum TokenType {
     EOF,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Token {
     token_type: TokenType,
-    lexeme: String,
-    literal: Option<String>,
+    lexeme: Option<String>, // Can be None
+    literal: String, // Should be the whole string and should not be None
     line: usize,
 }
 
 impl Token {
-    fn new(token_type: TokenType, lexeme: String, literal: Option<String>, line: usize) -> Token {
-        Token { token_type: token_type, lexeme: lexeme, literal: literal, line: line }
+    fn new(token_type: TokenType, lexeme: Option<String>, literal: &str, line: usize) -> Token {
+        Token { token_type: token_type, lexeme: lexeme, literal: literal.to_string(), line: line }
     }
 }
 
@@ -41,7 +46,7 @@ fn error(line: usize, message: &str) {
 
 pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
     let f = File::open(s)?;
-    let mut file = BufReader::new(&f);
+    let file = BufReader::new(&f);
     let results = lex_lines(file.lines())?;
     Ok(results)
 }
@@ -52,38 +57,33 @@ trait AddToken {
 
 impl AddToken for Vec<Token> {
     fn add_token<'a>(&'a mut self, token_type: TokenType, grapheme: &str, line: usize) {
-        self.push(Token::new(token_type, grapheme.to_string(), None, line));
+        self.push(Token::new(token_type, None, grapheme, line));
     }
 }
 
 fn lex_lines<T: BufRead>(lines: std::io::Lines<T>) -> Result<Vec<Token>, Error> {
     let mut tokens: Vec<Token> = Vec::new();
+    let mut line_count = 0;
     for (i, line) in lines.enumerate() {
         match line {
             Ok(line) => {
+                line_count = i;
                 tokens.append(&mut lex(i, &line));
                 tokens.add_token(TokenType::Newline, &"\n", i);
             }
             Err(_) => { error(i, "Corrupted text file that cannot be enumerated"); }
         }
     }
-    Ok(tokens)
-}
 
-#[derive(PartialEq)]
-enum Begin {
-    Nothing,
-    Space,
-    Date,
-    Comment,
+    tokens.add_token(TokenType::EOF, &"".to_string(), line_count + 1);
+
+    Ok(tokens)
 }
 
 pub fn lex(idx: usize, string: &String) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut graphemes = UnicodeSegmentation::graphemes(&string[..], true).peekable();
     let integer_regex = Regex::new(r"^\d$").unwrap();
-    let date_regex = Regex::new(r"^[0-9\-/]$").unwrap();
-    let any_character = Regex::new(r"^.$").unwrap();
     let date_dividers = [Some(&"/"), Some(&"-")];
     let mut current_string = "".to_string();
 
@@ -91,6 +91,7 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
         let grapheme = graphemes.next().unwrap();
 
         match grapheme {
+            // Begins with space, process as account
             " " => {
                 if graphemes.peek() == Some(&" ") {
                     if !current_string.is_empty() {
@@ -108,6 +109,7 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                     current_string.push_str(grapheme);
                 }
             }
+            // Begins with tab, process as account
             "\t" => {
                 if !current_string.is_empty() {
                     tokens.add_token(TokenType::String, &current_string, idx);
@@ -119,22 +121,42 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                 }
                 tokens.add_token(TokenType::Indentation, &s, idx)
             }
+            // Begins with digit, process as date (*|~)? description
             digit if integer_regex.is_match(digit) => {
                 let mut s = digit.to_string();
-                while integer_regex.is_match(graphemes.peek().unwrap_or(&"r")) {
+                while graphemes.peek().is_some() && integer_regex.is_match(graphemes.peek().unwrap()) {
                     s.push_str(graphemes.next().unwrap());
                     // Handle / and - that are dates
                     if date_dividers.contains(&graphemes.peek()) {
                         s.push_str(graphemes.next().unwrap());
                     }
-                    // Handle dot in numbers with decimal points
-                    // TODO: Multiple decimal points
-                    if graphemes.peek() == Some(&".") {
-                        let dot = graphemes.next();
-                        if integer_regex.is_match(graphemes.peek().unwrap()) {
-                            s.push_str(dot.unwrap());
+                }
+                if graphemes.peek() == Some(&" ") {
+                    tokens.add_token(TokenType::Date, &s, idx);
+                    s.clear();
+                    // process for */! and description
+                    while graphemes.peek() == Some(&" "){
+                        graphemes.next();
+                    }
+                }
+                if graphemes.peek().is_some() {
+                    if [Some(&"*"), Some(&"!")].contains(&graphemes.peek()) {
+                        let status = graphemes.next().unwrap();
+                        if graphemes.peek() == Some(&" ") {
+                            tokens.add_token(TokenType::Status, &status, idx);
+                            graphemes.next();
+                        }
+                        else {
+                            // There is no space so it might be part of the description
+                            s.push_str(status);
                         }
                     }
+                    while graphemes.peek().is_some() {
+                        s.push_str(graphemes.next().unwrap());
+                    }
+
+                    tokens.add_token(TokenType::Description, &s, idx);
+                    s.clear();
                 }
             }
             _ => {
@@ -142,123 +164,6 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
             }
         }
     }
-
-    tokens.push(Token::new(TokenType::EOF, "".to_string(), None, idx));
-
-
-    // match grapheme {
-    //     // If it is a space, check if followed by another space and use that as indentation
-    //     // Otherwise, add to current_string
-    //     " " => {
-    //         if graphemes.peek() == Some(&" ") {
-    //             tokens.add_token(TokenType::String, &current_string, line);
-    //             current_string.clear();
-    //
-    //             let mut s = "".to_string();
-    //             s.push_str(grapheme);
-    //             while graphemes.peek() == Some(&" ") {
-    //                 s.push_str(graphemes.next().unwrap());
-    //             }
-    //         }
-    //     }
-    //     "\t" => {
-    //         let mut s = "\t".to_string();
-    //         while graphemes.peek() == Some(&"\t") {
-    //             s.push_str(graphemes.next().unwrap());
-    //         }
-    //     }
-    //     digit if integer_regex.is_match(digit) => {
-    //         let mut s = digit.to_string();
-    //         while integer_regex.is_match(graphemes.peek().unwrap()) {
-    //             s.push_str(graphemes.next().unwrap());
-    //             // Handle / and - that are dates
-    //             if date_dividers.contains(&graphemes.peek()) {
-    //                 s.push_str(graphemes.next().unwrap());
-    //             }
-    //             // Handle dot in numbers with decimal points
-    //             // TODO: Multiple decimal points
-    //             if graphemes.peek() == Some(&".") {
-    //                 let dot = graphemes.next();
-    //                 if integer_regex.is_match(graphemes.peek().unwrap()) {
-    //                     s.push_str(dot.unwrap());
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     "\n" => {
-    //         tokens.add_token(TokenType::Newline, &grapheme, line);
-    //         line += 1;
-    //     }
-    //     _ => {
-    //         error(line, "Unexpected character.");
-    //     }
-    // }
-
-    //
-    // let symbol_chars = [Some(";"), Some("#"), Some("%"), Some("|"), Some("*")];
-    // let integer_regex = Regex::new(r"^\d+$").unwrap();
-    // let date_dividers = [Some(&"/"), Some(&"-")];
-    // let currencies = [Some("$"), Some("USD")];
-    //
-    // while w.peek().is_some() {
-    //     let token = w.next();
-    //
-    //     // We look at symbols, which depending on context, can be comments or meaningful
-    //     if symbol_chars.contains(&token) {
-    //         tokens.push(TokenType::Symbol(token.unwrap().to_owned()));
-    //         continue;
-    //     }
-    //
-    //     // Multiple spaces are separator
-    //     if token == Some(" ") {
-    //         // Multiple spaces are treated as separator
-    //         if w.peek() == Some(&" ") {
-    //             while w.peek() == Some(&" ") {
-    //                 w.next();
-    //             }
-    //             tokens.push(TokenType::Separator);
-    //         } else {
-    //             tokens.push(TokenType::Space);
-    //         }
-    //         continue;
-    //     }
-    //
-    //
-    //     if integer_regex.is_match(&token.unwrap()) {
-    //         // It is probably a date format
-    //         if date_dividers.contains(&w.peek()) {
-    //             let mut date_token = "".to_owned();
-    //             date_token.push_str(token.unwrap());
-    //             while w.peek() != Some(&" ") && w.peek() != None {
-    //                 // Until it reaches a space or end of file?
-    //                 date_token.push_str(w.next().unwrap());
-    //             }
-    //
-    //             tokens.push(TokenType::Date(date_token));
-    //             continue;
-    //         }
-    //     }
-    //
-    //
-    //     let possible_amount: Result<f64, ParseFloatError> = token.unwrap().parse();
-    //     match possible_amount {
-    //         Ok(money) => {
-    //             tokens.push(TokenType::Money(money));
-    //             continue;
-    //         }
-    //         Err(_) => { #<{(| It's not money :-( |)}># }
-    //     }
-    //
-    //
-    //     if currencies.contains(&token) {
-    //         tokens.push(TokenType::Currency(token.unwrap().to_owned()));
-    //         continue;
-    //     }
-    //
-    //
-    //     // Single space or word
-    //     tokens.push(TokenType::Word(token.unwrap().to_owned()));
-    // }
 
     tokens
 }
@@ -303,35 +208,37 @@ mod tests {
         assert_eq!(w, &[" ", " ", "Something", ";", " ", "to", " ", "go"]);
     }
 
-    // #[test]
-    // fn test_lex_line() {
-    //     let s = "  Assets:Cash  $100.25".to_string();
-    //     let lexed_line = lex_line(&s);
-    //     assert_eq!(
-    //         lexed_line,
-    //         &[
-    //             TokenType::Separator,
-    //             TokenType::Word("Assets:Cash".to_string()),
-    //             TokenType::Separator,
-    //             TokenType::Currency("$".to_string()),
-    //             TokenType::Money(100.25f64),
-    //         ]
-    //     );
-    //
-    //     let s = "2014-01-01 Assets:Cash  $100.25".to_string();
-    //     let lexed_line = lex_line(&s);
-    //     assert_eq!(
-    //         lexed_line,
-    //         &[
-    //             TokenType::Date("2014-01-01".to_string()),
-    //             TokenType::Space,
-    //             TokenType::Word("Assets:Cash".to_string()),
-    //             TokenType::Separator,
-    //             TokenType::Currency("$".to_string()),
-    //             TokenType::Money(100.25f64),
-    //         ]
-    //     );
-    // }
+    #[test]
+    fn test_lex_account() {
+        let s = "  Assets:Cash  $100.25".to_string();
+        let lexed_line = lex(1, &s);
+        assert_eq!(
+            lexed_line,
+            &[
+                Token::new( TokenType::Indentation, None, &"  ", 1 ),
+                Token::new( TokenType::AccountName, None, &"Assets", 1 ),
+                Token::new( TokenType::Colon, None, &":", 1 ),
+                Token::new( TokenType::AccountName, None, &"Cash", 1 ),
+                Token::new( TokenType::Indentation, None, &"  ", 1 ),
+                Token::new( TokenType::Currency, None, &"$", 1 ),
+                Token::new( TokenType::Money, None, &"100.25", 1 )
+            ]
+        );
+    }
+
+    #[test]
+    fn test_lex_date_description() {
+        let s = "2014-01-01 * A Description".to_string();
+        let lexed_line = lex(1, &s);
+        assert_eq!(
+            lexed_line,
+            &[
+                Token::new( TokenType::Date, None, &"2014-01-01".to_string(), 1 ),
+                Token::new( TokenType::Status, None, &"*", 1 ),
+                Token::new( TokenType::Description, None, &"A Description", 1 ),
+            ]
+        );
+    }
 
     #[test]
     fn test_lex_file() {

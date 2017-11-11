@@ -7,25 +7,10 @@ use std;
 use accounting::{Account, Balance, Transaction, Posting, Amount};
 use lexer::TokenType;
 
-#[derive(PartialEq)]
-enum State {
-    FullBreak,
-    PartialBreak,
-    Date,
-    Symbol,
-    Description,
-    Account,
-    Money,
-    Currency
-}
-
 // Now to confabulate these disgraced and shattered things into a story...
 // of money.
 // Must validate using state machine;
 pub fn parse<'a>(tokens: Vec<TokenType>) {
-    let mut line_number = 1;
-    let mut state = State::FullBreak;
-
 }
 
 
@@ -39,7 +24,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_panic_on_newline_with_indentation() {
-        parse(vec![TokenType::Separator]);
+        parse(vec![TokenType::Indentation]);
     }
 }
 
