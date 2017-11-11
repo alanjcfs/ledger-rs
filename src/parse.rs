@@ -1,7 +1,6 @@
 extern crate chrono;
 
 use regex::Regex;
-use std;
 
 #[allow(unused_imports)]
 use accounting::{Account, Balance, Transaction, Posting, Amount};
@@ -21,11 +20,11 @@ pub fn parse<'a>(tokens: Vec<TokenType>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    #[should_panic]
-    fn test_panic_on_newline_with_indentation() {
-        parse(vec![TokenType::Indentation]);
-    }
+    // #[test]
+    // #[should_panic]
+    // fn test_panic_on_newline_with_indentation() {
+        // parse(vec![TokenType::Indentation]);
+    // }
 }
 
 // let date = chrono::Date::from_utc(naive_date, chrono::Utc);

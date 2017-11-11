@@ -2,25 +2,18 @@ extern crate unicode_segmentation;
 
 use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;
-use std::num::ParseFloatError;
 use std::fs::File;
-use std::io::{Read, BufReader, Error, BufRead};
-use std::iter::Peekable;
+use std::io::{BufReader, Error, BufRead};
 use std;
 
 #[derive(Debug, PartialEq)]
 pub enum TokenType {
     // Single-character tokens
-    Colon, Semicolon, Hash, Modulo, Pipe, Star, Bang, Equal, Tilde,
-
     Currency,
-    Money,
     Description,
     AccountName,
     Status,
     Indentation,
-    String,
-    Number,
     Date,
     Newline,
     EOF,
@@ -91,35 +84,54 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
         let grapheme = graphemes.next().unwrap();
 
         match grapheme {
+            // ignore comments
+            ";" | "#" | "%" | "!" | "*" => {
+                break;
+            }
             // Begins with space, process as account
             " " => {
-                if graphemes.peek() == Some(&" ") {
-                    if !current_string.is_empty() {
-                        tokens.add_token(TokenType::String, &current_string, idx);
-                        current_string.clear();
+                while graphemes.peek() == Some(&" ") {
+                    graphemes.next().unwrap();
+                }
+                tokens.add_token(TokenType::Indentation, &"  ", idx);
+
+                let mut account_name = "".to_string();
+                if graphemes.peek().is_some() {
+                    while graphemes.peek().is_some() {
+                        let mut account_char = graphemes.next().unwrap();
+                        account_name.push_str(account_char);
+
+                        if graphemes.peek() == Some(&" ") {
+                            account_char = graphemes.next().unwrap();
+                            if graphemes.peek() == Some(&" ") {
+                                // separator
+                                tokens.add_token(TokenType::AccountName, &account_name, idx);
+                                account_name.clear();
+
+                                while graphemes.peek() == Some(&" ") {
+                                    graphemes.next();
+                                }
+                                tokens.add_token(TokenType::Indentation, &"  ", idx);
+                                // process as currency
+                                let mut currency = "".to_string();
+                                while graphemes.peek().is_some() {
+                                    currency.push_str(graphemes.next().unwrap());
+                                }
+                                tokens.add_token(TokenType::Currency, &currency, idx);
+                            }
+                            else {
+                                account_name.push_str(account_char);
+                            }
+                        }
                     }
-                    let mut s = "".to_string();
-                    s.push_str(grapheme);
-                    while graphemes.peek() == Some(&" ") {
-                        s.push_str(graphemes.next().unwrap());
+                    if !account_name.is_empty() {
+                        tokens.add_token(TokenType::AccountName, &account_name, idx);
+                        account_name.clear();
                     }
-                    tokens.add_token(TokenType::Indentation, &s, idx);
                 }
                 else {
-                    current_string.push_str(grapheme);
+                    error(idx, "No account")
                 }
-            }
-            // Begins with tab, process as account
-            "\t" => {
-                if !current_string.is_empty() {
-                    tokens.add_token(TokenType::String, &current_string, idx);
-                    current_string.clear();
-                }
-                let mut s = "\t".to_string();
-                while graphemes.peek() == Some(&"\t") {
-                    s.push_str(graphemes.next().unwrap());
-                }
-                tokens.add_token(TokenType::Indentation, &s, idx)
             }
             // Begins with digit, process as date (*|~)? description
             digit if integer_regex.is_match(digit) => {
@@ -179,49 +191,26 @@ mod tests {
     }
 
     #[test]
-    fn test_unicode_segmentation() {
-        let s = "  Assets:Cash  $100.25";
-        let w = s.split_word_bounds().collect::<Vec<&str>>();
-        assert_eq!(w, &[" ", " ", "Assets:Cash", " ", " ", "$", "100.25"]);
-
-        let s = "2014-01-01 * FUNHOUSE TRANSACT";
-        let w = s.split_word_bounds().collect::<Vec<&str>>();
-        assert_eq!(
-            w,
-            &[
-                "2014",
-                "-",
-                "01",
-                "-",
-                "01",
-                " ",
-                "*",
-                " ",
-                "FUNHOUSE",
-                " ",
-                "TRANSACT",
-            ]
-        );
-
-        let s = "  Something; to go";
-        let w = s.split_word_bounds().collect::<Vec<&str>>();
-        assert_eq!(w, &[" ", " ", "Something", ";", " ", "to", " ", "go"]);
-    }
-
-    #[test]
     fn test_lex_account() {
-        let s = "  Assets:Cash  $100.25".to_string();
+        let s = "  Assets:Cash  -$100.25".to_string();
         let lexed_line = lex(1, &s);
         assert_eq!(
             lexed_line,
             &[
                 Token::new( TokenType::Indentation, None, &"  ", 1 ),
-                Token::new( TokenType::AccountName, None, &"Assets", 1 ),
-                Token::new( TokenType::Colon, None, &":", 1 ),
-                Token::new( TokenType::AccountName, None, &"Cash", 1 ),
+                Token::new( TokenType::AccountName, None, &"Assets:Cash", 1 ),
                 Token::new( TokenType::Indentation, None, &"  ", 1 ),
-                Token::new( TokenType::Currency, None, &"$", 1 ),
-                Token::new( TokenType::Money, None, &"100.25", 1 )
+                Token::new( TokenType::Currency, None, &"-$100.25", 1 ),
+            ]
+        );
+
+        let s = "  Assets:Cash".to_string();
+        let lexed_line = lex(2, &s);
+        assert_eq!(
+            lexed_line,
+            &[
+                Token::new( TokenType::Indentation, None, &"  ", 2 ),
+                Token::new( TokenType::AccountName, None, &"Assets:Cash", 2 ),
             ]
         );
     }
