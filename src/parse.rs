@@ -1,20 +1,48 @@
 extern crate chrono;
 
-use regex::Regex;
-
 #[allow(unused_imports)]
 use accounting::{Account, Balance, Transaction, Posting, Amount};
-use lexer::TokenType;
+use lexer::{Token, TokenType};
+use error::error;
 
-// Now to confabulate these disgraced and shattered things into a story...
-// of money.
+// Now to confabulate these disgraced and shattered things into a story
 // Must validate using state machine;
-pub fn parse<'a>(tokens: Vec<TokenType>) {
+pub fn parse<'a>(tokens: Vec<Token>) {
+    let mut prev_token = TokenType::Newline;
+    for token in tokens {
+        match token.token_type() {
+            &TokenType::Newline => {
+                prev_token = TokenType::Newline;
+            }
+            &TokenType::Indentation => {
+                if prev_token == TokenType::Newline {
+                    error(token.line(), "Identation error");
+                }
+            }
+            &TokenType::Currency => {
+                if prev_token != TokenType::AccountName {
+                    error(token.line(), "No account name")
+                }
+
+            }
+            &TokenType::Description => {
+
+            }
+            &TokenType::AccountName => {
+
+            }
+            &TokenType::Status => {
+
+            }
+            &TokenType::Date => {
+
+            }
+            &TokenType::EOF => {
+
+            }
+        }
+    }
 }
-
-
-
-
 
 #[cfg(test)]
 mod tests {

@@ -9,7 +9,7 @@
 ;   ! = pending
 ; end comment
 
-Assets:Cash 500
+; Assets:Cash 500
 
 2013-01-01 * Beginning Balance
   Assets:Cash  $1

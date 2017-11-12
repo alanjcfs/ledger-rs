@@ -5,6 +5,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use std::fs::File;
 use std::io::{BufReader, Error, BufRead};
 use std;
+use error::error;
 
 #[derive(Debug, PartialEq)]
 pub enum TokenType {
@@ -31,11 +32,14 @@ impl Token {
     fn new(token_type: TokenType, lexeme: Option<String>, literal: &str, line: usize) -> Token {
         Token { token_type: token_type, lexeme: lexeme, literal: literal.to_string(), line: line }
     }
+    pub fn token_type(&self) -> &TokenType {
+        &self.token_type
+    }
+    pub fn line(&self) -> usize {
+        self.line
+    }
 }
 
-fn error(line: usize, message: &str) {
-    eprintln!("[line {}] Error: {}", line, message)
-}
 
 pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
     let f = File::open(s)?;
@@ -78,14 +82,13 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
     let mut graphemes = UnicodeSegmentation::graphemes(&string[..], true).peekable();
     let integer_regex = Regex::new(r"^\d$").unwrap();
     let date_dividers = [Some(&"/"), Some(&"-")];
-    let mut current_string = "".to_string();
 
     while graphemes.peek().is_some() {
         let grapheme = graphemes.next().unwrap();
 
         match grapheme {
             // ignore comments
-            ";" | "#" | "%" | "!" | "*" => {
+            ";" | "#" | "%" | "|" | "*" => {
                 break;
             }
             // Begins with space, process as account
@@ -171,8 +174,9 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                     s.clear();
                 }
             }
-            _ => {
-                println!("Something else")
+            _other_char => {
+                // TODO: We're currently ignoring other characters
+                // error(idx, &format!("An unknown character: {}", other_char));
             }
         }
     }

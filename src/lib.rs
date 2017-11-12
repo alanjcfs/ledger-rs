@@ -8,6 +8,7 @@ pub mod read;
 pub mod parse;
 pub mod lexer;
 pub mod status;
+pub mod error;
 
 
 
