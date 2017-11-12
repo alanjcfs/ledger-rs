@@ -2,12 +2,6 @@ use chrono::prelude::{Date, Utc};
 use status::Status;
 
 #[derive(Debug, Clone)]
-pub enum Balance {
-    Price(f64),
-    NoPrice,
-}
-
-#[derive(Debug, Clone)]
 pub struct Account {
     name: AccountName,
 }
@@ -15,14 +9,14 @@ pub struct Account {
 type AccountName = String;
 
 #[derive(Debug, Clone)]
-pub struct Posting<'a> {
-    transaction: &'a Transaction,
-    account: &'a Account,
-    amount: Amount,
+pub struct Posting {
+    transaction: Transaction,
+    account: Account,
+    amount: Option<Amount>,
 }
 
-impl<'a> Posting<'a> {
-    pub fn new(transaction: &'a Transaction, account: &'a Account, amount: Amount) -> Posting<'a> {
+impl Posting {
+    pub fn new(transaction: Transaction, account: Account, amount: Option<Amount>) -> Posting {
         Posting {
             transaction: transaction,
             account: account,
@@ -34,11 +28,11 @@ impl<'a> Posting<'a> {
 #[derive(Debug, Clone)]
 pub struct Amount {
     commodity: CommoditySymbol,
-    price: Balance,
+    price: f64,
 }
 
 impl Amount {
-    pub fn new(commodity: String, price: Balance) -> Amount {
+    pub fn new(commodity: CommoditySymbol, price: f64) -> Amount {
         Amount {
             commodity: commodity,
             price: price,
@@ -46,7 +40,7 @@ impl Amount {
     }
 }
 
-type CommoditySymbol = String;
+pub type CommoditySymbol = String;
 
 impl Account {
     pub fn new(s: String) -> Account {
@@ -54,39 +48,28 @@ impl Account {
             name: s,
         }
     }
+    pub fn name(&self) -> &String {
+        &self.name
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Transaction {
+    id: usize,
     date: Date<Utc>,
     edate: Option<Date<Utc>>,
     status: Status,
-    code: String,
     description: String,
 }
 
 impl Transaction {
-    pub fn new_default() -> Transaction {
+    pub fn new(id: usize, date: Date<Utc>, status: Status, desc: String) -> Transaction {
         Transaction {
-            description: "".to_string(),
-            date: Utc::today(),
-            edate: None,
-            status: Status::Unmarked,
-            code: "".to_string(),
-        }
-    }
-    pub fn new(desc: String, date: Date<Utc>) -> Transaction {
-        Transaction {
-            description: desc,
+            id: id,
             date: date,
             edate: None,
-            status: Status::Unmarked,
-            code: "".to_string(),
+            status: status,
+            description: desc,
         }
-    }
-    pub fn change_description_and_date(mut self: Transaction, s: &String, d: &Date<Utc>) -> Transaction {
-        self.date = d.clone();
-        self.description = s.clone();
-        self
     }
 }

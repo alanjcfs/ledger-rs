@@ -11,6 +11,7 @@ use error::error;
 pub enum TokenType {
     // Single-character tokens
     Currency,
+    CurrencyInferred,
     Description,
     AccountName,
     Status,
@@ -120,10 +121,15 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                                 tokens.add_token(TokenType::Indentation, &"  ", idx);
                                 // process as currency
                                 let mut currency = "".to_string();
-                                while graphemes.peek().is_some() {
-                                    currency.push_str(graphemes.next().unwrap());
+                                if graphemes.peek().is_some() {
+                                    while graphemes.peek().is_some() {
+                                        currency.push_str(graphemes.next().unwrap());
+                                    }
+                                    tokens.add_token(TokenType::Currency, &currency, idx);
                                 }
-                                tokens.add_token(TokenType::Currency, &currency, idx);
+                                else {
+                                    tokens.add_token(TokenType::CurrencyInferred, &"", idx);
+                                }
                             }
                             else {
                                 account_name.push_str(account_char);
@@ -195,6 +201,25 @@ mod tests {
         let s = "  Assets:Cash  $100.25\n";
         let w = UnicodeSegmentation::graphemes(s, true).collect::<Vec<&str>>();
         assert_eq!(w, &[" ", " ", "A", "s", "s", "e", "t", "s", ":", "C", "a", "s", "h", " ", " ", "$", "1", "0", "0", ".", "2", "5", "\n"])
+    }
+
+    #[test]
+    fn test_unicode_currency() {
+        let s = "$1234.23";
+        let w = s.split_word_bounds().collect::<Vec<&str>>();
+        assert_eq!(w, &["$", "1234.23"]);
+
+        let s = "-$1234.23";
+        let w = s.split_word_bounds().collect::<Vec<&str>>();
+        assert_eq!(w, &["-", "$", "1234.23"]);
+
+        let s = "$-1234.23";
+        let w = s.split_word_bounds().collect::<Vec<&str>>();
+        assert_eq!(w, &["$", "-", "1234.23"]);
+
+        let s = "$.04";
+        let w = s.split_word_bounds().collect::<Vec<&str>>();
+        assert_eq!(w, &["$", ".", "04"]);
     }
 
     #[test]
