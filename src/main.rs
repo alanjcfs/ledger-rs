@@ -54,7 +54,7 @@ fn main() {
             for token in &res {
                 println!("{:?}", token);
             }
-            ledger::parse::parse(res);
+            ledger::parser::parse(res);
         }
         Err(res) => {
             println!("Could not open and read file: {}", res);

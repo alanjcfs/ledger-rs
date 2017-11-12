@@ -5,7 +5,7 @@ extern crate unicode_segmentation;
 
 pub mod accounting;
 pub mod read;
-pub mod parse;
+pub mod parser;
 pub mod lexer;
 pub mod status;
 pub mod error;
