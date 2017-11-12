@@ -13,7 +13,7 @@ use unicode_segmentation::UnicodeSegmentation;
 pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {
     let mut date: Option<chrono::Date<Utc>> = None;
     let mut status: TxStatus = TxStatus::Unmarked;
-    let mut description: Option<String> = None;
+    let mut description = "".to_string();
     let mut transaction: Option<Transaction> = None;
     let mut current_account: Option<Account> = None;
 
@@ -29,7 +29,7 @@ pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {
                 if date.is_some() {
                     date = None;
                     status = TxStatus::Unmarked;
-                    description = None;
+                    description.clear();
                     transaction = None;
                     current_account = None;
                 }
@@ -63,9 +63,9 @@ pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {
             &Description => {
                 if date.is_none() { error(token.line(), "No Date for Description"); }
 
-                description = Some(token.literal().clone());
+                description.push_str(token.literal());
 
-                transaction = Some(Transaction::new(token.line(), date.unwrap(), status, description.unwrap()));
+                transaction = Some(Transaction::new(token.line(), date.unwrap(), status, description.clone()));
             }
             &Indentation => {
                 if date.is_none() { error(token.line(), "No Date for Indentation"); }
@@ -112,7 +112,7 @@ pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {
                                     amount = parsed;
                                 }
                                 Err(err) => {
-                                    error(token.line(), &format!("Could not parse {}", literal))
+                                    error(token.line(), &format!("{}: Could not parse {}", err, literal))
                                 }
                             }
                         }
