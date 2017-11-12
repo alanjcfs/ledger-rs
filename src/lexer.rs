@@ -38,6 +38,9 @@ impl Token {
     pub fn line(&self) -> usize {
         self.line
     }
+    pub fn literal(&self) -> &String {
+        &self.literal
+    }
 }
 
 

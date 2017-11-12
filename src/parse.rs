@@ -1,44 +1,53 @@
-extern crate chrono;
-
 #[allow(unused_imports)]
 use accounting::{Account, Balance, Transaction, Posting, Amount};
-use lexer::{Token, TokenType};
+use lexer::{Token};
+use lexer::TokenType::{Date, Newline, Indentation, Currency, Description, AccountName, Status, EOF};
 use error::error;
+use chrono;
+use chrono::Utc;
 
 // Now to confabulate these disgraced and shattered things into a story
 // Must validate using state machine;
 pub fn parse<'a>(tokens: Vec<Token>) {
-    let mut prev_token = TokenType::Newline;
+    let mut date: Option<chrono::Date<Utc>> = None;
+
     for token in tokens {
         match token.token_type() {
-            &TokenType::Newline => {
-                prev_token = TokenType::Newline;
+            &Newline => {
+                // Noop
             }
-            &TokenType::Indentation => {
-                if prev_token == TokenType::Newline {
-                    error(token.line(), "Identation error");
+            &Date => {
+                if date.is_none() {
+                    let date_string = token.literal();
+                    let mut naive_date = chrono::NaiveDate::parse_from_str(date_string, "%Y-%m-%d");
+                    if naive_date.is_ok() {
+                        date = Some(chrono::Date::from_utc(naive_date.unwrap(), chrono::Utc));
+                    }
+                    else {
+                        naive_date = chrono::NaiveDate::parse_from_str(date_string, "%Y-%m-%d");
+                    }
+                    if naive_date.is_ok() {
+                        date = Some(chrono::Date::from_utc(naive_date.unwrap(), chrono::Utc));
+                    }
+                    else {
+                        error(token.line(), "Date is not parseable");
+                    }
+
                 }
             }
-            &TokenType::Currency => {
-                if prev_token != TokenType::AccountName {
-                    error(token.line(), "No account name")
-                }
-
+            &Status => {
+                if date.is_none() { error(token.line(), "No Date"); }
             }
-            &TokenType::Description => {
-
+            &Description => {
             }
-            &TokenType::AccountName => {
-
+            &Indentation => {
             }
-            &TokenType::Status => {
-
+            &AccountName => {
             }
-            &TokenType::Date => {
-
+            &Currency => {
             }
-            &TokenType::EOF => {
-
+            &EOF => {
+                // Done
             }
         }
     }

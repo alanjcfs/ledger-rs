@@ -51,9 +51,10 @@ fn main() {
     let result = ledger::lexer::lex_file(file);
     match result {
         Ok(res) => {
-            for token in res {
+            for token in &res {
                 println!("{:?}", token);
             }
+            ledger::parse::parse(res);
         }
         Err(res) => {
             println!("Could not open and read file: {}", res);
