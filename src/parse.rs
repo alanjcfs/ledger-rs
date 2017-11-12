@@ -5,11 +5,13 @@ use lexer::TokenType::{Date, Newline, Indentation, Currency, Description, Accoun
 use error::error;
 use chrono;
 use chrono::Utc;
+use status::Status as TxStatus;
 
 // Now to confabulate these disgraced and shattered things into a story
 // Must validate using state machine;
 pub fn parse<'a>(tokens: Vec<Token>) {
     let mut date: Option<chrono::Date<Utc>> = None;
+    let mut status: TxStatus = TxStatus::Unmarked;
 
     for token in tokens {
         match token.token_type() {
@@ -37,6 +39,13 @@ pub fn parse<'a>(tokens: Vec<Token>) {
             }
             &Status => {
                 if date.is_none() { error(token.line(), "No Date"); }
+
+                let status_string = &token.literal();
+                status = match &status_string[..] {
+                    "!" => { TxStatus::Pending }
+                    "*" => { TxStatus::Cleared }
+                    _ => { TxStatus::Unmarked }
+                }
             }
             &Description => {
             }
