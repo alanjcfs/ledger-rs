@@ -1,20 +1,20 @@
 = README
 
-All the ledger's a stage, and the accounts in it merely players;<br>
-They have their exits and their entrances<br>
-Though the Accountants call them debits and credits.<br>
-Money in transaction plays two acts, the first its addition,<br>
-The second its complete negation. In bookkeeping,<br>
-A double entry of a moment and many postings must be made,<br>
-Where money anonymizes our chiefs and mischiefs<br>
-Where usurers compound their interests with green eyeshade,<br>
-Where Mammon whispers our avarice into complicity,<br>
-Where post-capitalism derives chimerical things<br>
-To advertise, exhorting us to sell and buy<br>
-Where the economy drops the have nots into a crouch,<br>
-And the have somes with a bubble precarity about them,<br>
-And the have-mosts helicoptering from one pillar to another,<br>
-Hoarding their leverage and leveraging their hoard,<br>
-The budgeting, the passion, and the syllables counted<br>
-Until the balance of both creed and debt has been recorded all<br>
+All the ledger's a stage, and the accounts in it merely players; +
+They have their exits and their entrances +
+Though the Accountants call them debits and credits. +
+Money in transaction plays two acts, the first its addition, +
+The second its complete negation. In bookkeeping, +
+A double entry of a moment and many postings must be made, +
+Where money anonymizes our chiefs and mischiefs +
+Where usurers compound their interests with green eyeshade, +
+Where Mammon whispers our avarice into complicity, +
+Where post-capitalism derives chimerical things +
+To advertise, exhorting us to sell and buy +
+Where the economy drops the have nots into a crouch, +
+And the have somes with a bubble precarity about them, +
+And the have-mosts helicoptering from one pillar to another, +
+Hoarding their leverage and leveraging their hoard, +
+The budgeting, the passion, and the syllables counted +
+Until the balance of both creed and debt has been recorded all +
 And the accounts are settled.
