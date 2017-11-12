@@ -108,9 +108,13 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                         let mut account_char = graphemes.next().unwrap();
                         account_name.push_str(account_char);
 
+                        if [Some(&";"), Some(&"#"), Some(&"%"), Some(&"|"), Some(&"*")].contains(&graphemes.peek()) {
+                            break;
+                        }
                         if graphemes.peek() == Some(&" ") {
                             account_char = graphemes.next().unwrap();
                             if graphemes.peek() == Some(&" ") {
+
                                 // separator
                                 tokens.add_token(TokenType::AccountName, &account_name, idx);
                                 account_name.clear();
@@ -119,6 +123,7 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                                     graphemes.next();
                                 }
                                 tokens.add_token(TokenType::Indentation, &"  ", idx);
+
                                 // process as currency
                                 let mut currency = "".to_string();
                                 if graphemes.peek().is_some() {
@@ -131,6 +136,8 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                                     tokens.add_token(TokenType::CurrencyInferred, &"", idx);
                                 }
                             }
+
+                            // account name
                             else {
                                 account_name.push_str(account_char);
                             }
@@ -141,10 +148,8 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                         account_name.clear();
                     }
                 }
-                else {
-                    error(idx, "No account")
-                }
             }
+
             // Begins with digit, process as date (*|~)? description
             digit if integer_regex.is_match(digit) => {
                 let mut s = digit.to_string();
