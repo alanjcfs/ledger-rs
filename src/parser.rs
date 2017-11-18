@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use accounting::{Account, Transaction, Posting, Amount, CommoditySymbol};
 use lexer::{Token};
-use lexer::TokenType::{Date, Newline, Indentation, Currency, CurrencyInferred, Description, AccountName, Status, EOF};
+use lexer::TokenType::{Date, Indentation, Currency, CurrencyInferred, Description, AccountName, Status, EOF};
 use error::error;
 use chrono;
 use chrono::Utc;
@@ -20,9 +20,6 @@ pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {
 
     for token in tokens {
         match token.token_type() {
-            &Newline => {
-                // Noop
-            }
             &Date => {
                 // Reset
                 if date.is_some() {

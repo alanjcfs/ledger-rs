@@ -12,7 +12,6 @@ pub enum TokenType {
     Date,
     Status,
     Description,
-    Newline,
     Indentation,
     AccountName,
     Currency,
@@ -69,7 +68,6 @@ fn lex_lines<T: BufRead>(lines: std::io::Lines<T>) -> Result<Vec<Token>, Error> 
             Ok(line) => {
                 line_count = i;
                 tokens.append(&mut lex(i, &line));
-                tokens.add_token(TokenType::Newline, &"\n", i);
             }
             Err(_) => { error(i, "Corrupted text file that cannot be enumerated"); }
         }
