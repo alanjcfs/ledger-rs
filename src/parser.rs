@@ -8,8 +8,7 @@ use chrono::Utc;
 use status::Status as TxStatus;
 use unicode_segmentation::UnicodeSegmentation;
 
-// Now to confabulate these disgraced and shattered things into a story
-// Must validate using state machine;
+// Now to confabulate these disgraced and shattered things
 pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {
     let mut date: Option<chrono::Date<Utc>> = None;
     let mut status: TxStatus = TxStatus::Unmarked;
@@ -68,11 +67,9 @@ pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {
                 transaction = Some(Transaction::new(token.line(), date.unwrap(), status, description.clone()));
             }
             &Indentation => {
-                if date.is_none() { error(token.line(), "No Date for Indentation"); }
+                if date.is_none() { error(token.line(), "Stray indentation"); }
             }
             &AccountName => {
-                if date.is_none() { error(token.line(), "No Date for Account Name"); }
-
                 let literal = token.literal();
                 current_account = Some(Account::new(literal.clone()));
             }
@@ -152,27 +149,3 @@ mod tests {
         // parse(vec![TokenType::Indentation]);
     // }
 }
-
-// let date = chrono::Date::from_utc(naive_date, chrono::Utc);
-// let naive_date =
-//     chrono::NaiveDate::parse_from_str(date_description.next().unwrap(), "%Y-%m-%d")
-//         .unwrap();
-
-
-/*
- * # TRANSACTIONS
- *
- * Contains only date, edate, clear status, code, description
- *
- * # POSTINGS
- *
- * Linked to transaction and account (a single record per account seems the simplest
- * implementation, more like how a database would handle it, than trying to store multiple accounts
- * in an array. It's also probably the easiest way to export and import into SQLite)
- *
- *
- * # ACCOUNTS
- *
- * Contains amounts?
- * Has a name, which can be colon separated.
- */
