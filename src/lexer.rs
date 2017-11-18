@@ -9,15 +9,14 @@ use error::error;
 
 #[derive(Debug, PartialEq)]
 pub enum TokenType {
-    // Single-character tokens
+    Date,
+    Status,
+    Description,
+    Newline,
+    Indentation,
+    AccountName,
     Currency,
     CurrencyInferred,
-    Description,
-    AccountName,
-    Status,
-    Indentation,
-    Date,
-    Newline,
     EOF,
 }
 
