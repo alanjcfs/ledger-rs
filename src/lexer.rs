@@ -89,10 +89,16 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
 
         match grapheme {
             // ignore comments
+            // TODO:
+            // - Process comments for tags and other metadata
+            // - Process comment blocks as well
             ";" | "#" | "%" | "|" | "*" => {
                 break;
             }
             // Begins with space, process as account
+            // TODO:
+            // - Elegant approach to indented comments would be nice
+            // - Handle tabs
             " " => {
                 while graphemes.peek() == Some(&" ") {
                     graphemes.next().unwrap();
@@ -148,6 +154,8 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
             }
 
             // Begins with digit, process as date (*|~)? description
+            // TODO:
+            // - Process edate, which is = sign followed by a second date
             digit if integer_regex.is_match(digit) => {
                 let mut s = digit.to_string();
                 while graphemes.peek().is_some() && integer_regex.is_match(graphemes.peek().unwrap()) {
