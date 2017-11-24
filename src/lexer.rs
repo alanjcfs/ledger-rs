@@ -11,7 +11,7 @@ use error::error;
 pub enum TokenType {
     Comment,
     Date,
-    Status,
+    Bang, Star, // Status
     Description,
     Indentation,
     AccountName,
@@ -177,16 +177,22 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                     }
                 }
                 if graphemes.peek().is_some() {
-                    if [Some(&"*"), Some(&"!")].contains(&graphemes.peek()) {
-                        let status = graphemes.next().unwrap();
+                    let maybe_status = graphemes.next();
+                    if Some("*") == maybe_status {
                         if graphemes.peek() == Some(&" ") {
-                            tokens.add_token(TokenType::Status, &status, idx);
-                            graphemes.next();
+                            tokens.add_token(TokenType::Star, &maybe_status.unwrap(), idx);
                         }
-                        else {
-                            // There is no space so it might be part of the description
-                            s.push_str(status);
+                        graphemes.next();
+                    }
+                    else if Some("!") == maybe_status {
+                        if graphemes.peek() == Some(&" ") {
+                            tokens.add_token(TokenType::Bang, &maybe_status.unwrap(), idx);
                         }
+                        graphemes.next();
+                    }
+                    else {
+                        // There is no space so it might be part of the description
+                        s.push_str(maybe_status.unwrap());
                     }
                     while graphemes.peek().is_some() {
                         s.push_str(graphemes.next().unwrap());
@@ -268,7 +274,7 @@ mod tests {
             lexed_line,
             &[
                 Token::new( TokenType::Date, &"2014-01-01".to_string(), 1 ),
-                Token::new( TokenType::Status, &"*", 1 ),
+                Token::new( TokenType::Star, &"*", 1 ),
                 Token::new( TokenType::Description, &"A Description", 1 ),
             ]
         );
