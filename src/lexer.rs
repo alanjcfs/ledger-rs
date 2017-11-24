@@ -9,27 +9,26 @@ use error::error;
 
 #[derive(Debug, PartialEq)]
 pub enum TokenType {
+    Comment,
     Date,
     Status,
     Description,
     Indentation,
     AccountName,
     Currency,
-    CurrencyInferred,
     EOF,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
     token_type: TokenType,
-    lexeme: Option<String>, // Can be None
     literal: String, // Should be the whole string and should not be None
     line: usize,
 }
 
 impl Token {
-    fn new(token_type: TokenType, lexeme: Option<String>, literal: &str, line: usize) -> Token {
-        Token { token_type: token_type, lexeme: lexeme, literal: literal.to_string(), line: line }
+    fn new(token_type: TokenType, literal: &str, line: usize) -> Token {
+        Token { token_type: token_type, literal: literal.to_string(), line: line }
     }
     pub fn token_type(&self) -> &TokenType {
         &self.token_type
@@ -52,11 +51,15 @@ pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
 
 trait AddToken {
     fn add_token<'a>(&'a mut self, token_type: TokenType, grapheme: &str, line: usize);
+    fn add_token_type<'a>(&'a mut self, token_type: TokenType, line: usize);
 }
 
 impl AddToken for Vec<Token> {
     fn add_token<'a>(&'a mut self, token_type: TokenType, grapheme: &str, line: usize) {
-        self.push(Token::new(token_type, None, grapheme, line));
+        self.push(Token::new(token_type, grapheme, line));
+    }
+    fn add_token_type<'a>(&'a mut self, token_type: TokenType, line: usize) {
+        self.push(Token::new(token_type, &"", line));
     }
 }
 
@@ -64,16 +67,16 @@ fn lex_lines<T: BufRead>(lines: std::io::Lines<T>) -> Result<Vec<Token>, Error> 
     let mut tokens: Vec<Token> = Vec::new();
     let mut line_count = 0;
     for (i, line) in lines.enumerate() {
-        match line {
-            Ok(line) => {
+        if let Ok(line) = line {
                 line_count = i;
                 tokens.append(&mut lex(i, &line));
-            }
-            Err(_) => { error(i, "Corrupted text file that cannot be enumerated"); }
+        }
+        else {
+            error(i, "Corrupted text file that cannot be enumerated");
         }
     }
 
-    tokens.add_token(TokenType::EOF, &"".to_string(), line_count + 1);
+    tokens.add_token_type(TokenType::EOF, line_count + 1);
 
     Ok(tokens)
 }
@@ -83,17 +86,20 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
     let mut graphemes = UnicodeSegmentation::graphemes(&string[..], true).peekable();
     let integer_regex = Regex::new(r"^\d$").unwrap();
     let date_dividers = [Some(&"/"), Some(&"-")];
+    // let indentation_regex = Regex::new(r" |\t+").unwrap();
 
-    while graphemes.peek().is_some() {
-        let grapheme = graphemes.next().unwrap();
-
+    while let Some(grapheme) = graphemes.next() {
         match grapheme {
             // ignore comments
             // TODO:
             // - Process comments for tags and other metadata
             // - Process comment blocks as well
             ";" | "#" | "%" | "|" | "*" => {
-                break;
+                let mut s = grapheme.to_string();
+                while let Some(g) = graphemes.next() {
+                    s.push_str(g);
+                }
+                tokens.add_token(TokenType::Comment, &s, idx)
             }
             // Begins with space, process as account
             // TODO:
@@ -103,7 +109,7 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                 while graphemes.peek() == Some(&" ") {
                     graphemes.next().unwrap();
                 }
-                tokens.add_token(TokenType::Indentation, &"  ", idx);
+                tokens.add_token_type(TokenType::Indentation, idx);
 
                 let mut account_name = "".to_string();
                 if graphemes.peek().is_some() {
@@ -125,7 +131,7 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                                 while graphemes.peek() == Some(&" ") {
                                     graphemes.next();
                                 }
-                                tokens.add_token(TokenType::Indentation, &"  ", idx);
+                                tokens.add_token_type(TokenType::Indentation, idx);
 
                                 // process as currency
                                 let mut currency = "".to_string();
@@ -134,9 +140,6 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                                         currency.push_str(graphemes.next().unwrap());
                                     }
                                     tokens.add_token(TokenType::Currency, &currency, idx);
-                                }
-                                else {
-                                    tokens.add_token(TokenType::CurrencyInferred, &"", idx);
                                 }
                             }
 
@@ -239,10 +242,10 @@ mod tests {
         assert_eq!(
             lexed_line,
             &[
-                Token::new( TokenType::Indentation, None, &"  ", 1 ),
-                Token::new( TokenType::AccountName, None, &"Assets:Cash", 1 ),
-                Token::new( TokenType::Indentation, None, &"  ", 1 ),
-                Token::new( TokenType::Currency, None, &"-$100.25", 1 ),
+                Token::new( TokenType::Indentation, &"", 1 ),
+                Token::new( TokenType::AccountName, &"Assets:Cash", 1 ),
+                Token::new( TokenType::Indentation, &"", 1 ),
+                Token::new( TokenType::Currency, &"-$100.25", 1 ),
             ]
         );
 
@@ -251,8 +254,8 @@ mod tests {
         assert_eq!(
             lexed_line,
             &[
-                Token::new( TokenType::Indentation, None, &"  ", 2 ),
-                Token::new( TokenType::AccountName, None, &"Assets:Cash", 2 ),
+                Token::new( TokenType::Indentation, &"", 2 ),
+                Token::new( TokenType::AccountName, &"Assets:Cash", 2 ),
             ]
         );
     }
@@ -264,9 +267,9 @@ mod tests {
         assert_eq!(
             lexed_line,
             &[
-                Token::new( TokenType::Date, None, &"2014-01-01".to_string(), 1 ),
-                Token::new( TokenType::Status, None, &"*", 1 ),
-                Token::new( TokenType::Description, None, &"A Description", 1 ),
+                Token::new( TokenType::Date, &"2014-01-01".to_string(), 1 ),
+                Token::new( TokenType::Status, &"*", 1 ),
+                Token::new( TokenType::Description, &"A Description", 1 ),
             ]
         );
     }
