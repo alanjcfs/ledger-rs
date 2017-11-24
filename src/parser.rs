@@ -12,6 +12,10 @@ use unicode_segmentation::UnicodeSegmentation;
 pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {
     let mut postings: Vec<Posting> = Vec::new();
 
+    let mut parser = Parser::new(tokens);
+    let token = parser.advance();
+    println!("{:?}", token);
+
     postings
 }
 
@@ -29,7 +33,7 @@ impl Parser {
     }
     fn advance(&mut self) -> &Token {
         if !self.is_at_end() { self.current += 1; }
-        &self.previous()
+        self.previous().clone()
     }
     fn peek(&self) -> &Token {
         &self.tokens[self.current]

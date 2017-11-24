@@ -49,18 +49,7 @@ fn main() {
     // println!("{:?}", postings);
 
     let result = ledger::lexer::lex_file(file);
-    match result {
-        Ok(res) => {
-            for token in &res {
-                println!("{:?}", token);
-            }
-            let postings = ledger::parser::parse(res);
-            for posting in postings {
-                println!("{:?}", posting);
-            }
-        }
-        Err(res) => {
-            println!("Could not open and read file: {}", res);
-        }
+    if let Ok(result) = result {
+        ledger::parser::parse(result);
     }
 }
