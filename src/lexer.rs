@@ -9,13 +9,16 @@ use error::error;
 
 #[derive(Debug, PartialEq)]
 pub enum TokenType {
+    // ";" | "#" | "%" | "|" | "*" => {
+    // Star can be comment or status (so star must be conditionally checked as comment)
+    Star, Bang, Equal, Minus,
     Comment,
     Date,
-    Bang, Star, // Status
     Description,
     Indentation,
     AccountName,
-    Currency,
+    CommoditySymbol,
+    Number,
     EOF,
 }
 
@@ -94,12 +97,15 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
             // TODO:
             // - Process comments for tags and other metadata
             // - Process comment blocks as well
-            ";" | "#" | "%" | "|" | "*" => {
+            ";" | "#" | "%" | "|" => {
                 let mut s = grapheme.to_string();
                 while let Some(g) = graphemes.next() {
                     s.push_str(g);
                 }
-                tokens.add_token(TokenType::Comment, &s, idx)
+                tokens.add_token(TokenType::Comment, &s, idx);
+            }
+            "=" => {
+                tokens.add_token(TokenType::Equal, &grapheme.to_string(), idx);
             }
             // Begins with space, process as account
             // TODO:
@@ -107,8 +113,9 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
             // - Handle tabs
             " " => {
                 while graphemes.peek() == Some(&" ") {
-                    graphemes.next().unwrap();
+                    graphemes.next();
                 }
+
                 tokens.add_token_type(TokenType::Indentation, idx);
 
                 let mut account_name = "".to_string();
@@ -118,8 +125,13 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                         account_name.push_str(account_char);
 
                         if [Some(&";"), Some(&"#"), Some(&"%"), Some(&"|"), Some(&"*")].contains(&graphemes.peek()) {
-                            break;
+                            // Return to the rest of the loop
                         }
+
+                        // Space has two possible values: If it is one space followed by a
+                        // character, then it is part of account name. However, additional spaces
+                        // means it is an indentation, and the next character should be read as
+                        // part of currency.
                         if graphemes.peek() == Some(&" ") {
                             account_char = graphemes.next().unwrap();
                             if graphemes.peek() == Some(&" ") {
@@ -131,16 +143,36 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                                 while graphemes.peek() == Some(&" ") {
                                     graphemes.next();
                                 }
+
                                 tokens.add_token_type(TokenType::Indentation, idx);
 
                                 // process as currency
-                                let mut currency = "".to_string();
-                                if graphemes.peek().is_some() {
-                                    while graphemes.peek().is_some() {
-                                        currency.push_str(graphemes.next().unwrap());
+                                let mut commodity_symbol = "".to_string();
+                                let mut number = "".to_string();
+
+                                while graphemes.peek().is_some() {
+                                    let current_char = graphemes.next().unwrap();
+                                    if current_char == "-" {
+                                        tokens.add_token_type(TokenType::Minus, idx);
                                     }
-                                    tokens.add_token(TokenType::Currency, &currency, idx);
+                                    else if current_char == " " {
+                                    }
+                                    else if integer_regex.is_match(current_char) {
+                                        number.push_str(current_char);
+                                        while graphemes.peek().is_some() && integer_regex.is_match(graphemes.peek().unwrap()) {
+                                            let num_char = graphemes.next().unwrap();
+                                            if graphemes.peek() == Some(&".") {
+                                                number.push_str(num_char);
+                                            }
+                                        }
+                                    }
+                                    else {
+                                        commodity_symbol.push_str(current_char);
+                                    }
                                 }
+
+                                tokens.add_token(TokenType::CommoditySymbol, &commodity_symbol, idx);
+                                tokens.add_token(TokenType::Number, &number, idx);
                             }
 
                             // account name
@@ -167,6 +199,8 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                     if date_dividers.contains(&graphemes.peek()) {
                         s.push_str(graphemes.next().unwrap());
                     }
+                }
+                if graphemes.peek() == Some(&"=") {
                 }
                 if graphemes.peek() == Some(&" ") {
                     tokens.add_token(TokenType::Date, &s, idx);
@@ -251,7 +285,9 @@ mod tests {
                 Token::new( TokenType::Indentation, &"", 1 ),
                 Token::new( TokenType::AccountName, &"Assets:Cash", 1 ),
                 Token::new( TokenType::Indentation, &"", 1 ),
-                Token::new( TokenType::Currency, &"-$100.25", 1 ),
+                Token::new( TokenType::Minus, &"-", 1 ),
+                Token::new( TokenType::CommoditySymbol, &"$", 1 ),
+                Token::new( TokenType::Number, &"100.25", 1 ),
             ]
         );
 
@@ -278,11 +314,5 @@ mod tests {
                 Token::new( TokenType::Description, &"A Description", 1 ),
             ]
         );
-    }
-
-    #[test]
-    fn test_lex_file() {
-        // TODO: Learn how one would test the ability to lex multiple lines. Probably not necessary
-        // to do because we can trust BufRead to behave correctly.
     }
 }

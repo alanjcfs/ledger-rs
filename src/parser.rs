@@ -1,12 +1,25 @@
 #[allow(unused_imports)]
 use accounting::{Account, Transaction, Posting, Amount, CommoditySymbol};
-use lexer::{Token};
+use lexer::Token;
 use lexer::TokenType::*;
 use error::error;
 use chrono;
 use chrono::Utc;
 use status::Status as TxStatus;
 use unicode_segmentation::UnicodeSegmentation;
+
+/*
+ * Simplified expression rules:
+ *
+ * Date -> Status
+ * Date -> Description
+ * Status -> Description
+ * Description -> Indentation
+ * Indentation -> Account Name
+ * Account Name -> Indentation -> Currency
+ * Currency -> "-" Currency | CommoditySymbol Currency | number
+ *
+ */
 
 // Now to confabulate these disgraced and shattered things
 pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {
