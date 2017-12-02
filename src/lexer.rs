@@ -1,35 +1,41 @@
 extern crate unicode_segmentation;
 
-use regex::Regex;
+// use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;
 use std::fs::File;
-use std::io::{BufReader, Error, BufRead};
-use std;
-use error::error;
+use std::io::{BufReader, Error, Read};
+use std::result::Result;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
-    Date,
-    Status,
-    Description,
+    Star,
+    Bang,
+    Slash,
+    Space,
+    Newline,
+    Hyphen,
     Indentation,
-    AccountName,
-    Currency,
-    CurrencyInferred,
+    Modulo,
+    Colon,
+    Semicolon,
+    Hash,
+    Pipe,
+    Number,
+    String,
     EOF,
 }
 
-#[derive(Debug, PartialEq)]
+// We don't need a literal because we don't need to parse 
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     token_type: TokenType,
-    lexeme: Option<String>, // Can be None
-    literal: String, // Should be the whole string and should not be None
+    lexeme: String, // Can be None
     line: usize,
 }
 
 impl Token {
-    fn new(token_type: TokenType, lexeme: Option<String>, literal: &str, line: usize) -> Token {
-        Token { token_type: token_type, lexeme: lexeme, literal: literal.to_string(), line: line }
+    fn new(token_type: TokenType, lexeme: String, line: usize) -> Token {
+        Token { token_type: token_type, lexeme: lexeme, line: line }
     }
     pub fn token_type(&self) -> &TokenType {
         &self.token_type
@@ -37,160 +43,102 @@ impl Token {
     pub fn line(&self) -> usize {
         self.line
     }
-    pub fn literal(&self) -> &String {
-        &self.literal
+    pub fn lexeme(&self) -> &String {
+        &self.lexeme
     }
-}
-
-
-pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
-    let f = File::open(s)?;
-    let file = BufReader::new(&f);
-    let results = lex_lines(file.lines())?;
-    Ok(results)
 }
 
 trait AddToken {
     fn add_token<'a>(&'a mut self, token_type: TokenType, grapheme: &str, line: usize);
+    fn add_token_type<'a>(&'a mut self, token_type: TokenType, line: usize);
 }
 
 impl AddToken for Vec<Token> {
     fn add_token<'a>(&'a mut self, token_type: TokenType, grapheme: &str, line: usize) {
-        self.push(Token::new(token_type, None, grapheme, line));
+        self.push(Token::new(token_type, grapheme.to_string(), line));
+    }
+    fn add_token_type<'a>(&'a mut self, token_type: TokenType, line: usize) {
+        self.add_token(token_type, &"".to_string(), line);
     }
 }
 
-fn lex_lines<T: BufRead>(lines: std::io::Lines<T>) -> Result<Vec<Token>, Error> {
-    let mut tokens: Vec<Token> = Vec::new();
-    let mut line_count = 0;
-    for (i, line) in lines.enumerate() {
-        match line {
-            Ok(line) => {
-                line_count = i;
-                tokens.append(&mut lex(i, &line));
-            }
-            Err(_) => { error(i, "Corrupted text file that cannot be enumerated"); }
-        }
-    }
-
-    tokens.add_token(TokenType::EOF, &"".to_string(), line_count + 1);
-
-    Ok(tokens)
+struct Scanner {
+    source: Vec<String>,
+    tokens: Vec<Token>,
+    start: usize,
+    current: usize,
+    line: usize,
 }
 
-pub fn lex(idx: usize, string: &String) -> Vec<Token> {
-    let mut tokens: Vec<Token> = Vec::new();
-    let mut graphemes = UnicodeSegmentation::graphemes(&string[..], true).peekable();
-    let integer_regex = Regex::new(r"^\d$").unwrap();
-    let date_dividers = [Some(&"/"), Some(&"-")];
+impl<'a> Scanner {
+    fn new(source: Vec<String>) -> Scanner {
+        Scanner { source: source, tokens: Vec::new(), start: 0, current: 0, line: 1 }
+    }
 
-    while graphemes.peek().is_some() {
-        let grapheme = graphemes.next().unwrap();
+    fn lex(&mut self) -> Result<Vec<Token>, ()> {
+        while !self.isAtEnd() {
+            self.start = self.current;
+            self.scan_token();
+        }
 
-        match grapheme {
-            // ignore comments
-            ";" | "#" | "%" | "|" | "*" => {
-                break;
+        self.tokens.add_token(TokenType::EOF, &"".to_string(), self.line);
+
+        Ok(self.tokens.clone())
+    }
+
+    fn isAtEnd(&self) -> bool {
+        self.current >= self.source.len()
+    }
+
+    fn scan_token(&mut self) {
+        self.current += 1;
+        let c = &self.source[self.current - 1];
+        match c.as_str() {
+            "*" => {
+                self.tokens.add_token_type(TokenType::Star, self.line)
             }
-            // Begins with space, process as account
-            " " => {
-                while graphemes.peek() == Some(&" ") {
-                    graphemes.next().unwrap();
-                }
-                tokens.add_token(TokenType::Indentation, &"  ", idx);
-
-                let mut account_name = "".to_string();
-                if graphemes.peek().is_some() {
-                    while graphemes.peek().is_some() {
-                        let mut account_char = graphemes.next().unwrap();
-                        account_name.push_str(account_char);
-
-                        if [Some(&";"), Some(&"#"), Some(&"%"), Some(&"|"), Some(&"*")].contains(&graphemes.peek()) {
-                            break;
-                        }
-                        if graphemes.peek() == Some(&" ") {
-                            account_char = graphemes.next().unwrap();
-                            if graphemes.peek() == Some(&" ") {
-
-                                // separator
-                                tokens.add_token(TokenType::AccountName, &account_name, idx);
-                                account_name.clear();
-
-                                while graphemes.peek() == Some(&" ") {
-                                    graphemes.next();
-                                }
-                                tokens.add_token(TokenType::Indentation, &"  ", idx);
-
-                                // process as currency
-                                let mut currency = "".to_string();
-                                if graphemes.peek().is_some() {
-                                    while graphemes.peek().is_some() {
-                                        currency.push_str(graphemes.next().unwrap());
-                                    }
-                                    tokens.add_token(TokenType::Currency, &currency, idx);
-                                }
-                                else {
-                                    tokens.add_token(TokenType::CurrencyInferred, &"", idx);
-                                }
-                            }
-
-                            // account name
-                            else {
-                                account_name.push_str(account_char);
-                            }
-                        }
-                    }
-                    if !account_name.is_empty() {
-                        tokens.add_token(TokenType::AccountName, &account_name, idx);
-                        account_name.clear();
-                    }
-                }
+            "/" => {
+                self.tokens.add_token_type(TokenType::Slash, self.line)
             }
-
-            // Begins with digit, process as date (*|~)? description
-            digit if integer_regex.is_match(digit) => {
-                let mut s = digit.to_string();
-                while graphemes.peek().is_some() && integer_regex.is_match(graphemes.peek().unwrap()) {
-                    s.push_str(graphemes.next().unwrap());
-                    // Handle / and - that are dates
-                    if date_dividers.contains(&graphemes.peek()) {
-                        s.push_str(graphemes.next().unwrap());
-                    }
-                }
-                if graphemes.peek() == Some(&" ") {
-                    tokens.add_token(TokenType::Date, &s, idx);
-                    s.clear();
-                    // process for */! and description
-                    while graphemes.peek() == Some(&" "){
-                        graphemes.next();
-                    }
-                }
-                if graphemes.peek().is_some() {
-                    if [Some(&"*"), Some(&"!")].contains(&graphemes.peek()) {
-                        let status = graphemes.next().unwrap();
-                        if graphemes.peek() == Some(&" ") {
-                            tokens.add_token(TokenType::Status, &status, idx);
-                            graphemes.next();
-                        }
-                        else {
-                            // There is no space so it might be part of the description
-                            s.push_str(status);
-                        }
-                    }
-                    while graphemes.peek().is_some() {
-                        s.push_str(graphemes.next().unwrap());
-                    }
-
-                    tokens.add_token(TokenType::Description, &s, idx);
-                    s.clear();
-                }
-            }
-            _other_char => {
-                // TODO: We're currently ignoring other characters
-                // error(idx, &format!("An unknown character: {}", other_char));
+            _ => {
+                // noop
             }
         }
     }
+}
+
+pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
+    let f = File::open(s)?;
+    let mut file = BufReader::new(&f);
+    let mut string: String = "".to_string();
+    file.read_to_string(&mut string)?;
+    let mut results = Scanner::new(UnicodeSegmentation::graphemes(&string[..], true).map(|x| x.to_string()).collect::<Vec<String>>());
+    results.lex();
+    Ok(results.tokens)
+}
+
+// fn lex_lines<T: BufRead>(lines: std::io::Lines<T>) -> Result<Vec<Token>, Error> {
+//     let mut tokens: Vec<Token> = Vec::new();
+//     let mut line_count = 0;
+//     for (i, line) in lines.enumerate() {
+//         match line {
+//             Ok(line) => {
+//                 line_count = i;
+//                 tokens.append(&mut lex(i, &line));
+//             }
+//             Err(_) => { error(i, "Corrupted text file that cannot be enumerated"); }
+//         }
+//     }
+//
+//     tokens.add_token(TokenType::EOF, &"".to_string(), line_count + 1);
+//
+//     Ok(tokens)
+// }
+
+pub fn lex(string: &String) -> Vec<Token> {
+    let mut tokens: Vec<Token> = Vec::new();
+    let mut graphemes = UnicodeSegmentation::graphemes(&string[..], true).collect::<Vec<&str>>();
+
 
     tokens
 }
@@ -226,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_lex_account() {
-        let s = "  Assets:Cash  -$100.25".to_string();
+        let s = "  Assets:Cash  -$100.25\n".to_string();
         let lexed_line = lex(1, &s);
         assert_eq!(
             lexed_line,
@@ -238,7 +186,7 @@ mod tests {
             ]
         );
 
-        let s = "  Assets:Cash".to_string();
+        let s = "  Assets:Cash\n".to_string();
         let lexed_line = lex(2, &s);
         assert_eq!(
             lexed_line,
@@ -251,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_lex_date_description() {
-        let s = "2014-01-01 * A Description".to_string();
+        let s = "2014-01-01 * A Description\n".to_string();
         let lexed_line = lex(1, &s);
         assert_eq!(
             lexed_line,
