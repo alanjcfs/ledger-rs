@@ -5,6 +5,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use std::fs::File;
 use std::io::{BufReader, Error, Read};
 use std::result::Result;
+use error::error;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
@@ -100,8 +101,17 @@ impl<'a> Scanner {
             "/" => {
                 self.tokens.add_token_type(TokenType::Slash, self.line)
             }
+            ";" => {
+                self.tokens.add_token_type(TokenType::Semicolon, self.line)
+            }
+            "%" => {
+                self.tokens.add_token_type(TokenType::Modulo, self.line)
+            }
+            "|" => {
+                self.tokens.add_token_type(TokenType::Pipe, self.line)
+            }
             _ => {
-                // noop
+                error(self.line, "Unexpected character.");
             }
         }
     }
@@ -116,24 +126,6 @@ pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
     results.lex();
     Ok(results.tokens)
 }
-
-// fn lex_lines<T: BufRead>(lines: std::io::Lines<T>) -> Result<Vec<Token>, Error> {
-//     let mut tokens: Vec<Token> = Vec::new();
-//     let mut line_count = 0;
-//     for (i, line) in lines.enumerate() {
-//         match line {
-//             Ok(line) => {
-//                 line_count = i;
-//                 tokens.append(&mut lex(i, &line));
-//             }
-//             Err(_) => { error(i, "Corrupted text file that cannot be enumerated"); }
-//         }
-//     }
-//
-//     tokens.add_token(TokenType::EOF, &"".to_string(), line_count + 1);
-//
-//     Ok(tokens)
-// }
 
 pub fn lex(string: &String) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
