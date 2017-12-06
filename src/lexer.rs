@@ -77,7 +77,7 @@ impl<'a> Scanner {
     }
 
     fn lex(&mut self) -> Result<Vec<Token>, ()> {
-        while !self.isAtEnd() {
+        while !self.is_at_end() {
             self.start = self.current;
             self.scan_token();
         }
@@ -87,7 +87,7 @@ impl<'a> Scanner {
         Ok(self.tokens.clone())
     }
 
-    fn isAtEnd(&self) -> bool {
+    fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
 
@@ -110,9 +110,45 @@ impl<'a> Scanner {
             "|" => {
                 self.tokens.add_token_type(TokenType::Pipe, self.line)
             }
+            "-" => {
+                self.tokens.add_token_type(TokenType::Hyphen, self.line)
+            }
+            " " => {
+                if self.is_match(&" ".to_string()) {
+                    while self.peek() == " ".to_string() && !self.is_at_end() {
+                        self.current += 1;
+                    }
+                    self.tokens.add_token_type(TokenType::Indentation, self.line);
+                }
+                else {
+                    self.tokens.add_token_type(TokenType::Space, self.line);
+                }
+            }
+            "\n" => {
+                self.tokens.add_token_type(TokenType::Newline, self.line);
+            }
             _ => {
                 error(self.line, "Unexpected character.");
             }
+        }
+    }
+
+    fn is_match(&self, expected: &String) -> bool {
+        if self.is_at_end() {
+            return false
+        }
+        if &self.source[self.current] != expected {
+            return false
+        }
+        true
+    }
+
+    fn peek(&self) -> String {
+        if self.is_at_end() {
+            "\0".to_string()
+        }
+        else {
+            self.source[self.current].clone()
         }
     }
 }
