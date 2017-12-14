@@ -132,12 +132,12 @@ pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {    // let mut date: Optio
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    #[test]
-    fn test_float() {
-        assert_eq!("04".parse::<f64>(), Ok(4f64));
-        assert_eq!(".04".parse::<f64>(), Ok(0.04));
-    }
+    // use super::*;
+    // #[test]
+    // fn test_float() {
+    //     assert_eq!("04".parse::<f64>(), Ok(4f64));
+    //     assert_eq!(".04".parse::<f64>(), Ok(0.04));
+    // }
 
 
     // #[should_panic]
