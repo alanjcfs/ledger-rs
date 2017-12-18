@@ -153,6 +153,7 @@ impl<'a> Scanner {
     }
 }
 
+#[allow(unused_must_use)]
 pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
     let f = File::open(s)?;
     let mut file = BufReader::new(&f);
@@ -164,8 +165,8 @@ pub fn lex_file(s: &str) -> Result<Vec<Token>, Error> {
 }
 
 pub fn lex(string: &String) -> Vec<Token> {
-    let mut tokens: Vec<Token> = Vec::new();
-    let mut graphemes = UnicodeSegmentation::graphemes(&string[..], true).collect::<Vec<&str>>();
+    let tokens: Vec<Token> = Vec::new();
+    let _graphemes = UnicodeSegmentation::graphemes(&string[..], true).collect::<Vec<&str>>();
 
 
     tokens

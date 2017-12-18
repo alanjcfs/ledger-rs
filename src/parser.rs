@@ -9,13 +9,13 @@ use lexer::{Token};
 // use unicode_segmentation::UnicodeSegmentation;
 
 // Now to confabulate these disgraced and shattered things
-pub fn parse<'a>(tokens: Vec<Token>) -> Vec<Posting> {    // let mut date: Option<chrono::Date<Utc>> = None;
+pub fn parse<'a>(_tokens: Vec<Token>) -> Vec<Posting> {    // let mut date: Option<chrono::Date<Utc>> = None;
     // let mut status: TxStatus = TxStatus::Unmarked;
     // let mut description = "".to_string();
     // let mut transaction: Option<Transaction> = None;
     // let mut current_account: Option<Account> = None;
     //
-    let mut postings: Vec<Posting> = Vec::new();
+    let postings: Vec<Posting> = Vec::new();
     //
     // for token in tokens {
     //     match token.token_type() {
