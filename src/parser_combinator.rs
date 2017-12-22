@@ -25,7 +25,7 @@ impl State {
     }
 
     fn peek(&self, n: usize) -> Option<String> {
-        if self.offset + n < self.string.len() {
+        if self.offset + n <= self.string.len() {
             Some(self.string[self.offset..self.offset + n].to_string())
         } else {
             None
@@ -93,29 +93,29 @@ enum Func {
 fn seq_generator(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
     Box::new(move |state| {
         let mut matches = Vec::new();
+        // Feed input state through a chain of other combinators, output state of one combinator
+        // becomes the input for the next. If all combinators match, return the sequence
+        // with state set to the last state otherwise, return None.
         let mut current_state = Some(state.clone());
 
         for combinator in &combinators {
-            if current_state.is_none() { break; }
-
             let result = match combinator {
                 &Func::Str(ref f) => {
-                    f(current_state.unwrap().clone())
+                    f(current_state.clone().unwrap())
                 }
                 &Func::Chr(ref f) => {
-                    f(current_state.unwrap().clone())
+                    f(current_state.clone().unwrap())
                 }
             };
-            println!("{:?}", result);
+            println!("match {:?}", result);
             if let Some(MatchState(node, new_state)) = result {
+                println!("state: {:?}, {:?}", node, new_state);
                 matches.push(node);
                 current_state = Some(new_state.clone());
-            } else {
-                current_state = None;
             }
         }
 
-        if current_state.is_some() {
+        if current_state.is_some(){
             Some(MatchState(Match::Seq(matches), current_state.unwrap()))
         }
         else {
@@ -231,12 +231,20 @@ mod tests {
             panic!("no output")
         }
 
-        assert_eq!(digit(input.read(2)), None)
+        assert_eq!(digit(input.read(2)), None);
     }
 
     #[test]
     fn test_seq_generator() {
         let input = State::new("7+8", 0);
+        // Sanity check
+        let digit = chr_generator(r"0-9".to_string());
+        let reg = str_generator("+".to_string());
+        assert_eq!(digit(input.read(0)), Some(MatchState(Match::Chr("7".to_string()), State::new("7+8", 1))));
+        assert_eq!(reg(input.read(1)), Some(MatchState(Match::Str("+".to_string()), State::new("7+8", 2))));
+        assert_eq!(digit(input.read(2)), Some(MatchState(Match::Chr("8".to_string()), State::new("7+8", 3))));
+
+
         let addition = seq_generator(vec![Func::Chr(chr_generator("0-9".to_string())), Func::Str(str_generator(r"+".to_string())), Func::Chr(chr_generator("0-9".to_string()))]);
 
         let results = addition(input);
