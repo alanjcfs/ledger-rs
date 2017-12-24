@@ -88,6 +88,7 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut graphemes = UnicodeSegmentation::graphemes(&string[..], true).peekable();
     let integer_regex = Regex::new(r"^\d$").unwrap();
+    let number_regex = Regex::new(r"^[\d\.]$").unwrap();
     let date_dividers = [Some(&"/"), Some(&"-")];
     // let indentation_regex = Regex::new(r" |\t+").unwrap();
 
@@ -150,21 +151,15 @@ pub fn lex(idx: usize, string: &String) -> Vec<Token> {
                                 let mut commodity_symbol = "".to_string();
                                 let mut number = "".to_string();
 
-                                while graphemes.peek().is_some() {
-                                    let current_char = graphemes.next().unwrap();
+                                while let Some(current_char) = graphemes.next() {
                                     if current_char == "-" {
                                         tokens.add_token_type(TokenType::Minus, idx);
                                     }
                                     else if current_char == " " {
+                                        // noop
                                     }
-                                    else if integer_regex.is_match(current_char) {
+                                    else if number_regex.is_match(current_char) {
                                         number.push_str(current_char);
-                                        while graphemes.peek().is_some() && integer_regex.is_match(graphemes.peek().unwrap()) {
-                                            let num_char = graphemes.next().unwrap();
-                                            if graphemes.peek() == Some(&".") {
-                                                number.push_str(num_char);
-                                            }
-                                        }
                                     }
                                     else {
                                         commodity_symbol.push_str(current_char);
@@ -285,7 +280,21 @@ mod tests {
                 Token::new( TokenType::Indentation, &"", 1 ),
                 Token::new( TokenType::AccountName, &"Assets:Cash", 1 ),
                 Token::new( TokenType::Indentation, &"", 1 ),
-                Token::new( TokenType::Minus, &"-", 1 ),
+                Token::new( TokenType::Minus, &"", 1 ),
+                Token::new( TokenType::CommoditySymbol, &"$", 1 ),
+                Token::new( TokenType::Number, &"100.25", 1 ),
+            ]
+        );
+
+        let s = "  Assets:Cash  $-100.25".to_string();
+        let lexed_line = lex(1, &s);
+        assert_eq!(
+            lexed_line,
+            &[
+                Token::new( TokenType::Indentation, &"", 1 ),
+                Token::new( TokenType::AccountName, &"Assets:Cash", 1 ),
+                Token::new( TokenType::Indentation, &"", 1 ),
+                Token::new( TokenType::Minus, &"", 1 ),
                 Token::new( TokenType::CommoditySymbol, &"$", 1 ),
                 Token::new( TokenType::Number, &"100.25", 1 ),
             ]
