@@ -91,6 +91,7 @@ enum Func {
     Chr(String),
     Rep(Box<Func>, usize),
     Seq(Vec<Func>),
+    Alt(Vec<Func>),
 }
 
 fn seq_comb(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
@@ -114,6 +115,9 @@ fn seq_comb(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
                 }
                 &Func::Seq(ref s) => {
                     seq_comb(s.clone().to_vec())(current_state.clone().unwrap())
+                }
+                &Func::Alt(ref s) => {
+                    alt_comb(s.clone().to_vec())(current_state.clone().unwrap())
                 }
             };
             if let Some(MatchState(node, new_state)) = result {
@@ -153,8 +157,10 @@ fn rep_comb(combinator: Func, n: usize) -> Box<Fn(State) -> Option<MatchState>> 
                 Func::Seq(ref f) => {
                     seq_comb(f.clone().to_vec())(s.clone())
                 }
+                Func::Alt(ref f) => {
+                    alt_comb(f.clone().to_vec())(s.clone())
+                }
             };
-            println!("{:?}", result);
             if let Some(MatchState(node, new_state)) = result {
                 current_state = Some(new_state);
                 matches.push(node);
@@ -187,6 +193,9 @@ fn alt_comb(parsers: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
                 }
                 &Func::Seq(ref f) => {
                     seq_comb(f.clone().to_vec())(state.clone())
+                }
+                &Func::Alt(ref f) => {
+                    alt_comb(f.clone().to_vec())(state.clone())
                 }
             };
             if let Some(result) = r {
@@ -287,7 +296,6 @@ mod tests {
         let addition = seq_comb(vec![Func::Chr("0-9".to_string()), Func::Str(r"+".to_string()), Func::Chr("0-9".to_string())]);
 
         let results = addition(input);
-        println!("{:?}", results);
         if let Some(MatchState(m, s)) = results {
             assert_eq!(
                 m,
@@ -310,7 +318,6 @@ mod tests {
         let input = State::new("2017", 0);
         let number = rep_comb(Func::Chr("0-9".to_string()), 1);
         let results = number(input);
-        println!("{:?}", results);
         if let Some(MatchState(m, s)) = results {
             assert_eq!(
                 m,
@@ -328,9 +335,64 @@ mod tests {
         }
     }
 
+    // In the reproof of tests lies the true proof of a parser combinator
     #[test]
     fn test_alt_comb() {
-        let w = rep_comb(str_comb(" "), 0);
-        let number = alt_comb(str_comb("0"), seq_comb(chr_comb("1-9"), rep_comb(chr_comb("0-9"), 0)))
+        let w = Func::Rep(Box::new(Func::Str(" ".to_string())), 0);
+        let number = Func::Alt(
+            vec![
+            Func::Str("0".to_string()),
+            Func::Seq(
+                vec![
+                Func::Chr("1-9".to_string()),
+                Func::Rep(Box::new(Func::Chr("0-9".to_string())), 0)
+                ],
+            )]);
+        let addition = Func::Seq(
+            vec![
+            number.clone(),
+            w.clone(),
+            Func::Str("+".to_string()), w.clone(), number.clone()
+            ]);
+        let expression = alt_comb(vec![addition, number.clone()]);
+        let result = expression(State::new("12", 0));
+        if let Some(MatchState(m, s)) = result {
+            assert_eq!(s,
+                       State::new("12", 2));
+            // assert_eq!(m,
+            //            Match::Seq(
+            //                vec![
+            //                Match::Chr("1".to_string()),
+            //                Match::Rep(
+            //                    vec![Match::Chr("2".to_string())]
+            //                    )]));
+        } else {
+            panic!("no results from alt_comb");
+        }
+
+        let result = expression(State::new("34 + 567", 0));
+        if let Some(MatchState(m, s)) = result {
+            assert_eq!(s,
+                       State::new("34 + 567", 8));
+            assert_eq!(m,
+                       Match::Seq(
+                           vec![
+                           Match::Chr("3".to_string()),
+                           Match::Chr("4".to_string()),
+                           Match::Rep(
+                               vec![
+                               Match::Str(" ".to_string()),
+                               Match::Str("+".to_string()),
+                               Match::Rep(vec![Match::Str(" ".to_string())])
+                               ]
+                               )
+                           ]
+                           )
+                       );
+
+        } else {
+            panic!("no results from alt_comb");
+        }
+
     }
 }
