@@ -359,13 +359,19 @@ mod tests {
         if let Some(MatchState(m, s)) = result {
             assert_eq!(s,
                        State::new("12", 2));
-            // assert_eq!(m,
-            //            Match::Seq(
-            //                vec![
-            //                Match::Chr("1".to_string()),
-            //                Match::Rep(
-            //                    vec![Match::Chr("2".to_string())]
-            //                    )]));
+            assert_eq!(m,
+                       Match::Seq(
+                           vec![
+                           Match::Seq(
+                               vec![
+                               Match::Chr("1".to_string()),
+                               Match::Rep(vec![Match::Chr("2".to_string())])
+                               ]
+                           ),
+                           Match::Rep(vec![]),
+                           Match::Rep(vec![]),
+                           Match::Seq(vec![Match::Rep(vec![])])
+                           ]));
         } else {
             panic!("no results from alt_comb");
         }
@@ -375,19 +381,18 @@ mod tests {
             assert_eq!(s,
                        State::new("34 + 567", 8));
             assert_eq!(m,
-                       Match::Seq(
-                           vec![
-                           Match::Chr("3".to_string()),
-                           Match::Chr("4".to_string()),
-                           Match::Rep(
+                       Match::Seq(vec![
+                           Match::Seq(
                                vec![
-                               Match::Str(" ".to_string()),
+                               Match::Chr("3".to_string()),
+                               Match::Rep(vec![Match::Chr("4".to_string())])]),
+                               Match::Rep(vec![ Match::Str(" ".to_string())]),
                                Match::Str("+".to_string()),
-                               Match::Rep(vec![Match::Str(" ".to_string())])
+                               Match::Rep(vec![Match::Str(" ".to_string())]),
+                               Match::Seq(vec![Match::Chr("5".to_string()),
+                                    Match::Rep(vec![Match::Chr("6".to_string()), Match::Chr("7".to_string())])
                                ]
-                               )
-                           ]
-                           )
+                           )])
                        );
 
         } else {
