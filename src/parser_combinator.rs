@@ -85,9 +85,12 @@ fn chr_comb(pattern: String) -> Box<Fn(State) -> Option<MatchState>> {
     })
 }
 
+#[derive(Debug, Clone)]
 enum Func {
     Str(String),
     Chr(String),
+    Rep(Box<Func>, usize),
+    Seq(Vec<Func>),
 }
 
 fn seq_comb(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
@@ -106,10 +109,14 @@ fn seq_comb(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
                 &Func::Chr(ref s) => {
                     chr_comb(s.to_owned())(current_state.clone().unwrap())
                 }
+                &Func::Rep(ref s, size) => {
+                    rep_comb(*s.to_owned(), size)(current_state.clone().unwrap())
+                }
+                &Func::Seq(ref s) => {
+                    seq_comb(s.clone().to_vec())(current_state.clone().unwrap())
+                }
             };
-            println!("match {:?}", result);
             if let Some(MatchState(node, new_state)) = result {
-                println!("state: {:?}, {:?}", node, new_state);
                 matches.push(node);
                 current_state = Some(new_state.clone());
             }
@@ -140,6 +147,12 @@ fn rep_comb(combinator: Func, n: usize) -> Box<Fn(State) -> Option<MatchState>> 
                 Func::Chr(ref f) => {
                     chr_comb(f.to_owned())(s.clone())
                 }
+                Func::Rep(ref f, size) => {
+                    rep_comb(*f.to_owned(), size)(s.clone())
+                }
+                Func::Seq(ref f) => {
+                    seq_comb(f.clone().to_vec())(s.clone())
+                }
             };
             println!("{:?}", result);
             if let Some(MatchState(node, new_state)) = result {
@@ -168,6 +181,12 @@ fn alt_comb(parsers: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
                 }
                 &Func::Chr(ref f) => {
                     chr_comb(f.to_owned())(state.clone())
+                }
+                &Func::Rep(ref f, size) => {
+                    rep_comb(*f.to_owned(), size)(state.clone())
+                }
+                &Func::Seq(ref f) => {
+                    seq_comb(f.clone().to_vec())(state.clone())
                 }
             };
             if let Some(result) = r {
