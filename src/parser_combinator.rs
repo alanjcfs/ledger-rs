@@ -52,7 +52,7 @@ enum Match {
 #[derive(Debug, PartialEq)]
 struct MatchState(Match, State);
 
-fn str_generator(s: String) -> Box<Fn(State) -> Option<MatchState>> {
+fn str_comb(s: String) -> Box<Fn(State) -> Option<MatchState>> {
     Box::new(move |state| {
         let chunk = state.peek(s.len());
 
@@ -68,7 +68,7 @@ fn str_generator(s: String) -> Box<Fn(State) -> Option<MatchState>> {
     })
 }
 
-fn chr_generator(pattern: String) -> Box<Fn(State) -> Option<MatchState>> {
+fn chr_comb(pattern: String) -> Box<Fn(State) -> Option<MatchState>> {
     Box::new(move |state| {
         let chunk = state.peek(1);
 
@@ -90,7 +90,7 @@ enum Func {
     Chr(Box<Fn(State) -> Option<MatchState>>),
 }
 
-fn seq_generator(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
+fn seq_comb(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
     Box::new(move |state| {
         let mut matches = Vec::new();
         // Feed input state through a chain of other combinators, output state of one combinator
@@ -124,7 +124,7 @@ fn seq_generator(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>>
     })
 }
 
-fn rep_generator(combinator: Func, n: usize) -> Box<Fn(State) -> Option<MatchState>> {
+fn rep_comb(combinator: Func, n: usize) -> Box<Fn(State) -> Option<MatchState>> {
     Box::new(move |state| {
         let mut matches = Vec::new();
         let mut last_state = None;
@@ -159,7 +159,7 @@ fn rep_generator(combinator: Func, n: usize) -> Box<Fn(State) -> Option<MatchSta
     })
 }
 
-fn alt_generator(parsers: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
+fn alt_comb(parsers: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
     Box::new(move |state| {
         for parser in &parsers {
             let r = match parser {
@@ -210,10 +210,10 @@ mod tests {
     }
 
     #[test]
-    fn test_str_generator() {
+    fn test_str_comb() {
         let input = State::new("hello world", 0);
-        let hello = str_generator(r"hello".to_string());
-        let world = str_generator(r"world".to_string());
+        let hello = str_comb(r"hello".to_string());
+        let world = str_comb(r"world".to_string());
 
         if let Some(MatchState(m, s)) = hello(input) {
             assert_eq!(m, Match::Str("hello".to_string()));
@@ -233,9 +233,9 @@ mod tests {
     }
 
     #[test]
-    fn test_chr_generator() {
+    fn test_chr_comb() {
         let input = State::new("12 + 34", 0);
-        let digit = chr_generator(r"0-9".to_string());
+        let digit = chr_comb(r"0-9".to_string());
 
         if let Some(MatchState(m, s)) = digit(input.read(1)) {
             assert_eq!(m, Match::Chr("2".to_string()));
@@ -255,17 +255,17 @@ mod tests {
     }
 
     #[test]
-    fn test_seq_generator() {
+    fn test_seq_comb() {
         let input = State::new("7+8", 0);
         // Sanity check
-        let digit = chr_generator(r"0-9".to_string());
-        let reg = str_generator("+".to_string());
+        let digit = chr_comb(r"0-9".to_string());
+        let reg = str_comb("+".to_string());
         assert_eq!(digit(input.read(0)), Some(MatchState(Match::Chr("7".to_string()), State::new("7+8", 1))));
         assert_eq!(reg(input.read(1)), Some(MatchState(Match::Str("+".to_string()), State::new("7+8", 2))));
         assert_eq!(digit(input.read(2)), Some(MatchState(Match::Chr("8".to_string()), State::new("7+8", 3))));
 
 
-        let addition = seq_generator(vec![Func::Chr(chr_generator("0-9".to_string())), Func::Str(str_generator(r"+".to_string())), Func::Chr(chr_generator("0-9".to_string()))]);
+        let addition = seq_comb(vec![Func::Chr(chr_comb("0-9".to_string())), Func::Str(str_comb(r"+".to_string())), Func::Chr(chr_comb("0-9".to_string()))]);
 
         let results = addition(input);
         println!("{:?}", results);
@@ -287,9 +287,9 @@ mod tests {
     }
 
     #[test]
-    fn test_rep_generator() {
+    fn test_rep_comb() {
         let input = State::new("2017", 0);
-        let number = rep_generator(Func::Chr(chr_generator("0-9".to_string())), 1);
+        let number = rep_comb(Func::Chr(chr_comb("0-9".to_string())), 1);
         let results = number(input);
         println!("{:?}", results);
         if let Some(MatchState(m, s)) = results {
@@ -307,5 +307,11 @@ mod tests {
         } else {
             panic!("number(input) did not generate a result")
         }
+    }
+
+    #[test]
+    fn test_alt_comb() {
+        let w = rep_comb(str_comb(" "), 0);
+        let number = alt_comb(str_comb("0"), seq_comb(chr_comb("1-9"), rep_comb(chr_comb("0-9"), 0)))
     }
 }
