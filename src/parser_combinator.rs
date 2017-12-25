@@ -161,8 +161,15 @@ fn rep_generator(combinator: Func, n: usize) -> Box<Fn(State) -> Option<MatchSta
 
 fn alt_generator(parsers: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>> {
     Box::new(move |state| {
-        for parser in parsers {
-            let r = parser(state);
+        for parser in &parsers {
+            let r = match parser {
+                &Func::Str(ref f) => {
+                    f(state.clone())
+                }
+                &Func::Chr(ref f) => {
+                    f(state.clone())
+                }
+            };
             if let Some(result) = r {
                 return Some(result)
             }
