@@ -69,6 +69,13 @@ trait ParserCombinator {
     fn alt(parsers: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>>;
 }
 
+trait References {
+    fn w() -> Func;
+    fn expression() -> Box<Fn(State) -> Option<MatchState>>;
+    fn addition() -> Func;
+    fn number() -> Func;
+}
+
 struct Addition;
 
 impl ParserCombinator for Addition {
@@ -220,6 +227,36 @@ impl ParserCombinator for Addition {
     }
 }
 
+impl References for Addition {
+    fn w() -> Func {
+        Func::Rep(Box::new(Func::Str(" ".to_string())), 0)
+    }
+    fn expression() -> Box<Fn(State) -> Option<MatchState>> {
+        Addition::alt(vec![Self::addition(), Self::number()])
+    }
+    fn addition() -> Func {
+        Func::Seq(
+            vec![
+            Self::number(),
+            Self::w(),
+            Func::Str("+".to_string()), Self::w(), Self::number()
+            ]
+        )
+    }
+    fn number() -> Func {
+        Func::Alt(
+            vec![
+            Func::Str("0".to_string()),
+            Func::Seq(
+                vec![
+                Func::Chr("1-9".to_string()),
+                Func::Rep(Box::new(Func::Chr("0-9".to_string())), 0)
+                ],
+            )]
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -347,24 +384,7 @@ mod tests {
     // In the reproof of tests lies the true proof of a parser combinator
     #[test]
     fn test_alt() {
-        let w = Func::Rep(Box::new(Func::Str(" ".to_string())), 0);
-        let number = Func::Alt(
-            vec![
-            Func::Str("0".to_string()),
-            Func::Seq(
-                vec![
-                Func::Chr("1-9".to_string()),
-                Func::Rep(Box::new(Func::Chr("0-9".to_string())), 0)
-                ],
-            )]);
-        let addition = Func::Seq(
-            vec![
-            number.clone(),
-            w.clone(),
-            Func::Str("+".to_string()), w.clone(), number.clone()
-            ]);
-        let expression = Addition::alt(vec![addition, number.clone()]);
-        let result = expression(State::new("12", 0));
+        let result = Addition::expression()(State::new("12", 0));
         if let Some(MatchState(m, s)) = result {
             assert_eq!(s,
                        State::new("12", 2));
