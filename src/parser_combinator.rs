@@ -228,23 +228,25 @@ impl ParserCombinator for Addition {
 }
 
 impl References for Addition {
-    fn w() -> Func {
-        Func::Rep(Box::new(Func::Str(" ".to_string())), 0)
+    fn w() -> Box<Fn(State) -> Option<MatchState>> {
+        Addition::rep(Box::new(Func::Str(" ".to_string())), 0)
     }
     fn expression() -> Box<Fn(State) -> Option<MatchState>> {
         Addition::alt(vec![Self::addition(), Self::number()])
     }
-    fn addition() -> Func {
-        Func::Seq(
+    fn addition() -> Box<Fn(State) -> Option<MatchState>> {
+        Addition::seq(
             vec![
             Self::number(),
             Self::w(),
-            Func::Str("+".to_string()), Self::w(), Self::number()
+            Func::Str("+".to_string()),
+            Self::w(),
+            Self::expression()
             ]
         )
     }
-    fn number() -> Func {
-        Func::Alt(
+    fn number() -> Box<Fn(State) -> Option<MatchState>> {
+        Addition::alt(
             vec![
             Func::Str("0".to_string()),
             Func::Seq(
@@ -405,7 +407,7 @@ mod tests {
             panic!("no results from alt");
         }
 
-        let result = expression(State::new("34 + 567", 0));
+        let result = Addition::expression()(State::new("34 + 567", 0));
         if let Some(MatchState(m, s)) = result {
             assert_eq!(s,
                        State::new("34 + 567", 8));
@@ -426,6 +428,10 @@ mod tests {
         } else {
             panic!("no results from alt");
         }
+    }
+
+    #[test]
+    fn test_ref() {
 
     }
 }
