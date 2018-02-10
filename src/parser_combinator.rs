@@ -67,13 +67,16 @@ trait ParserCombinator {
     fn seq(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>>;
     fn rep(combinator: Func, n: usize) -> Box<Fn(State) -> Option<MatchState>>;
     fn alt(parsers: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>>;
+    fn ref_(Self) -> Box<Fn(State) -> Option<MatchState>>;
 }
 
 trait References {
-    fn w() -> Func;
+    fn w() -> Box<Fn(State) -> Option<MatchState>>;
     fn expression() -> Box<Fn(State) -> Option<MatchState>>;
-    fn addition() -> Func;
-    fn number() -> Func;
+    fn addition() -> Box<Fn(State) -> Option<MatchState>>;
+    fn number() -> Box<Fn(State) -> Option<MatchState>>;
+    fn parse(String) -> Option<Match>;
+    fn root() -> Box<Fn(State) -> Option<MatchState>>;
 }
 
 struct Addition;
@@ -225,23 +228,31 @@ impl ParserCombinator for Addition {
             None
         })
     }
+    fn ref_(function: Self) -> Box<Fn(State) -> Option<MatchState>> {
+        Box::new(move |state| {
+            function(state)
+        })
+    }
 }
 
 impl References for Addition {
     fn w() -> Box<Fn(State) -> Option<MatchState>> {
-        Addition::rep(Box::new(Func::Str(" ".to_string())), 0)
+        Addition::rep(Func::Str(" ".to_string()), 0)
+    }
+    fn root() -> Box<Fn(State) -> Option<MatchState>> {
+        Self::expression()
     }
     fn expression() -> Box<Fn(State) -> Option<MatchState>> {
-        Addition::alt(vec![Self::addition(), Self::number()])
+        Addition::alt(vec![Self::ref_(Self::addition), Self::ref_(&Self::number)])
     }
     fn addition() -> Box<Fn(State) -> Option<MatchState>> {
         Addition::seq(
             vec![
-            Self::number(),
-            Self::w(),
-            Func::Str("+".to_string()),
-            Self::w(),
-            Self::expression()
+            Self::ref_(&Self::number),
+            Self::ref_(&Self::w),
+            Self::str_("+".to_string()),
+            Self::ref_(&Self::w),
+            Self::ref_(&Self::expression),
             ]
         )
     }
@@ -256,6 +267,20 @@ impl References for Addition {
                 ],
             )]
         )
+    }
+    fn parse(string: String) -> Option<Match> {
+        let thing = Self::root()(State::new(&string, 0));
+        if let Some(MatchState(node, new_state)) = thing {
+            if new_state.is_complete() {
+                Some(node)
+            }
+            else {
+                None
+            }
+        }
+        else {
+            None
+        }
     }
 }
 
