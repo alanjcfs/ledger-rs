@@ -67,7 +67,7 @@ trait ParserCombinator {
     fn seq(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>>;
     fn rep(combinator: Func, n: usize) -> Box<Fn(State) -> Option<MatchState>>;
     fn alt(parsers: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>>;
-    fn ref_(Self) -> Box<Fn(State) -> Option<MatchState>>;
+    fn ref_(s: AdditionEnum) -> Box<Fn(State) -> Option<MatchState>>;
 }
 
 trait References {
@@ -228,13 +228,32 @@ impl ParserCombinator for Addition {
             None
         })
     }
-    fn ref_(function: Self) -> Box<Fn(State) -> Option<MatchState>> {
+    fn ref_(s: AdditionEnum) -> Box<Fn(State) -> Option<MatchState>> {
         Box::new(move |state| {
-            function(state)
+            match s {
+                AdditionEnum::Addition => {
+                    Self::addition()(state)
+                }
+                AdditionEnum::Number => {
+                    Self::number()(state)
+                }
+                AdditionEnum::W => {
+                    Self::w()(state)
+                }
+                AdditionEnum::Expression => {
+                    Self::expression()(state)
+                }
+            }
         })
     }
 }
 
+enum AdditionEnum {
+    Addition,
+    Number,
+    W,
+    Expression
+}
 impl References for Addition {
     fn w() -> Box<Fn(State) -> Option<MatchState>> {
         Addition::rep(Func::Str(" ".to_string()), 0)
@@ -243,16 +262,16 @@ impl References for Addition {
         Self::expression()
     }
     fn expression() -> Box<Fn(State) -> Option<MatchState>> {
-        Addition::alt(vec![Self::ref_(Self::addition), Self::ref_(&Self::number)])
+        Addition::alt(vec![Self::ref_(AdditionEnum::Addition), Self::ref_(AdditionEnum::Number)])
     }
     fn addition() -> Box<Fn(State) -> Option<MatchState>> {
         Addition::seq(
             vec![
-            Self::ref_(&Self::number),
-            Self::ref_(&Self::w),
+            Self::ref_(AdditionEnum::Number),
+            Self::ref_(AdditionEnum::W),
             Self::str_("+".to_string()),
-            Self::ref_(&Self::w),
-            Self::ref_(&Self::expression),
+            Self::ref_(AdditionEnum::W),
+            Self::ref_(AdditionEnum::Expression),
             ]
         )
     }
