@@ -67,16 +67,16 @@ trait ParserCombinator {
     fn seq(combinators: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>>;
     fn rep(combinator: Func, n: usize) -> Box<Fn(State) -> Option<MatchState>>;
     fn alt(parsers: Vec<Func>) -> Box<Fn(State) -> Option<MatchState>>;
-    fn ref_(s: AdditionEnum) -> Box<Fn(State) -> Option<MatchState>>;
+    fn ref_(s: AdditionEnum) -> Func;
 }
 
 trait References {
-    fn w() -> Box<Fn(State) -> Option<MatchState>>;
-    fn expression() -> Box<Fn(State) -> Option<MatchState>>;
-    fn addition() -> Box<Fn(State) -> Option<MatchState>>;
-    fn number() -> Box<Fn(State) -> Option<MatchState>>;
+    fn w() -> Func;
+    fn expression() -> Func;
+    fn addition() -> Func;
+    fn number() -> Func;
     fn parse(String) -> Option<Match>;
-    fn root() -> Box<Fn(State) -> Option<MatchState>>;
+    fn root() -> Func;
 }
 
 struct Addition;
@@ -228,23 +228,21 @@ impl ParserCombinator for Addition {
             None
         })
     }
-    fn ref_(s: AdditionEnum) -> Box<Fn(State) -> Option<MatchState>> {
-        Box::new(move |state| {
-            match s {
-                AdditionEnum::Addition => {
-                    Self::addition()(state)
-                }
-                AdditionEnum::Number => {
-                    Self::number()(state)
-                }
-                AdditionEnum::W => {
-                    Self::w()(state)
-                }
-                AdditionEnum::Expression => {
-                    Self::expression()(state)
-                }
+    fn ref_(s: AdditionEnum) -> Func {
+        match s {
+            AdditionEnum::Addition => {
+                Self::addition()
             }
-        })
+            AdditionEnum::Number => {
+                Self::number()
+            }
+            AdditionEnum::W => {
+                Self::w()
+            }
+            AdditionEnum::Expression => {
+                Self::expression()
+            }
+        }
     }
 }
 
@@ -254,29 +252,31 @@ enum AdditionEnum {
     W,
     Expression
 }
+// I wonder if I can use ref to return Func, which can then be read by alt or ref_ to generate a
+// function that can be called?
 impl References for Addition {
-    fn w() -> Box<Fn(State) -> Option<MatchState>> {
-        Addition::rep(Func::Str(" ".to_string()), 0)
+    fn w() -> Func {
+        Func::Rep(Box::new(Func::Str(" ".to_string())), 0)
     }
-    fn root() -> Box<Fn(State) -> Option<MatchState>> {
+    fn root() -> Func {
         Self::expression()
     }
-    fn expression() -> Box<Fn(State) -> Option<MatchState>> {
-        Addition::alt(vec![Self::ref_(AdditionEnum::Addition), Self::ref_(AdditionEnum::Number)])
+    fn expression() -> Func {
+        Func::Alt(vec![Self::ref_(AdditionEnum::Addition), Self::ref_(AdditionEnum::Number)])
     }
-    fn addition() -> Box<Fn(State) -> Option<MatchState>> {
-        Addition::seq(
+    fn addition() -> Func {
+        Func::Seq(
             vec![
             Self::ref_(AdditionEnum::Number),
             Self::ref_(AdditionEnum::W),
-            Self::str_("+".to_string()),
+            Func::Str("+".to_string()),
             Self::ref_(AdditionEnum::W),
             Self::ref_(AdditionEnum::Expression),
             ]
         )
     }
-    fn number() -> Box<Fn(State) -> Option<MatchState>> {
-        Addition::alt(
+    fn number() -> Func {
+        Func::Alt(
             vec![
             Func::Str("0".to_string()),
             Func::Seq(
@@ -288,7 +288,16 @@ impl References for Addition {
         )
     }
     fn parse(string: String) -> Option<Match> {
-        let thing = Self::root()(State::new(&string, 0));
+        let func = match Self::root() {
+            Func::Alt(vectors) => {
+                Addition::alt(vectors)
+            }
+            _ => {
+                panic!("Should not match anything else!")
+            }
+        };
+
+        let thing = func(State::new(&string, 0));
         if let Some(MatchState(node, new_state)) = thing {
             if new_state.is_complete() {
                 Some(node)
@@ -430,7 +439,15 @@ mod tests {
     // In the reproof of tests lies the true proof of a parser combinator
     #[test]
     fn test_alt() {
-        let result = Addition::expression()(State::new("12", 0));
+        let func = match Addition::expression() {
+            Func::Alt(vectors) => {
+                Addition::alt(vectors)
+            }
+            _ => {
+                panic!("Should not match anything else!")
+            }
+        };
+        let result = func(State::new("12", 0));
         if let Some(MatchState(m, s)) = result {
             assert_eq!(s,
                        State::new("12", 2));
@@ -451,7 +468,15 @@ mod tests {
             panic!("no results from alt");
         }
 
-        let result = Addition::expression()(State::new("34 + 567", 0));
+        let func = match Addition::expression() {
+            Func::Alt(vectors) => {
+                Addition::alt(vectors)
+            }
+            _ => {
+                panic!("Should not match anything else!")
+            }
+        };
+        let result = func(State::new("34 + 567", 0));
         if let Some(MatchState(m, s)) = result {
             assert_eq!(s,
                        State::new("34 + 567", 8));
