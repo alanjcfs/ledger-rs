@@ -225,20 +225,13 @@ impl ParserCombinator for Addition {
     }
     fn ref_(s: AdditionEnum) -> Box<Fn(State) -> Option<MatchState>> {
         Box::new(move |state| {
-            match s {
-                AdditionEnum::Addition => {
-                    Addition::addition()(state)
-                }
-                AdditionEnum::Number => {
-                    Addition::number()(state)
-                }
-                AdditionEnum::W => {
-                    Addition::w()(state)
-                }
-                AdditionEnum::Expression => {
-                    Addition::expression()(state)
-                }
-            }
+            let result = match s {
+                AdditionEnum::Addition => Addition::addition(),
+                AdditionEnum::Number => Addition::number(),
+                AdditionEnum::W => Addition::w(),
+                AdditionEnum::Expression => Addition::expression(),
+            };
+            result(state)
         })
     }
 }
@@ -287,7 +280,7 @@ enum AdditionEnum {
 // function that can be called?
 impl References for Addition {
     fn expression() -> Box<Fn(State) -> Option<MatchState>> {
-        Addition::alt2(vec![Self::ref_(AdditionEnum::Addition), Self::ref_(AdditionEnum::Number)])
+        Addition::alt2(vec![Self::ref_(AdditionEnum::Number), Self::ref_(AdditionEnum::Addition)])
     }
     fn addition() -> Box<Fn(State) -> Option<MatchState>> {
         Addition::seq2(
@@ -462,9 +455,7 @@ mod tests {
     // In the reproof of tests lies the true proof of a parser combinator
     #[test]
     fn test_alt() {
-        eprintln!("First line");
         let func = Addition::expression();
-        println!("Reached func");
         let result = func(State::new("12", 0));
         println!("Called func");
         if let Some(MatchState(m, s)) = result {
@@ -490,6 +481,8 @@ mod tests {
 
     #[test]
     fn test_alt_2() {
+        eprintln!("First line");
+        println!("Reached func");
         let func = Addition::expression();
         let result = func(State::new("34 + 567", 0));
         if let Some(MatchState(m, s)) = result {
