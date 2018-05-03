@@ -405,7 +405,7 @@ mod tests {
             panic!("no results from alt");
         }
 
-        let result = expression(State::new("34 + 567", 0));
+        let result = Addition::expression()(State::new("34 + 567", 0));
         if let Some(MatchState(m, s)) = result {
             assert_eq!(s,
                        State::new("34 + 567", 8));
