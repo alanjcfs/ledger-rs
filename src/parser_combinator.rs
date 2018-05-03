@@ -258,6 +258,8 @@ impl ReferenceCombinator for Addition {
                 if let Some(MatchState(node, new_state)) = result {
                     matches.push(node);
                     current_state = Some(new_state.clone());
+                } else {
+                    break
                 }
             }
 
@@ -280,7 +282,7 @@ enum AdditionEnum {
 // function that can be called?
 impl References for Addition {
     fn expression() -> Box<Fn(State) -> Option<MatchState>> {
-        Addition::alt2(vec![Self::ref_(AdditionEnum::Number), Self::ref_(AdditionEnum::Addition)])
+        Addition::alt2(vec![Self::ref_(AdditionEnum::Addition), Self::ref_(AdditionEnum::Number)])
     }
     fn addition() -> Box<Fn(State) -> Option<MatchState>> {
         Addition::seq2(
@@ -457,7 +459,6 @@ mod tests {
     fn test_alt() {
         let func = Addition::expression();
         let result = func(State::new("12", 0));
-        println!("Called func");
         if let Some(MatchState(m, s)) = result {
             assert_eq!(s,
                        State::new("12", 2));
@@ -471,8 +472,6 @@ mod tests {
                                ]
                            ),
                            Match::Rep(vec![]),
-                           Match::Rep(vec![]),
-                           Match::Seq(vec![Match::Rep(vec![])])
                            ]));
         } else {
             panic!("no results from alt");
@@ -481,27 +480,44 @@ mod tests {
 
     #[test]
     fn test_alt_2() {
-        eprintln!("First line");
-        println!("Reached func");
         let func = Addition::expression();
         let result = func(State::new("34 + 567", 0));
         if let Some(MatchState(m, s)) = result {
-            assert_eq!(s,
-                       State::new("34 + 567", 8));
-            assert_eq!(m,
-                       Match::Seq(vec![
-                           Match::Seq(
-                               vec![
-                               Match::Chr("3".to_string()),
-                               Match::Rep(vec![Match::Chr("4".to_string())])]),
-                               Match::Rep(vec![ Match::Str(" ".to_string())]),
-                               Match::Str("+".to_string()),
-                               Match::Rep(vec![Match::Str(" ".to_string())]),
-                               Match::Seq(vec![Match::Chr("5".to_string()),
-                                    Match::Rep(vec![Match::Chr("6".to_string()), Match::Chr("7".to_string())])
-                               ]
-                           )
-                       ]));
+            assert_eq!(
+                s,
+                State::new("34 + 567", 8));
+            assert_eq!(
+                m,
+                Match::Seq(
+                    vec![
+                        Match::Seq(
+                            vec![
+                                Match::Chr("3".to_string()),
+                                Match::Rep(vec![Match::Chr("4".to_string())])
+                            ]
+                        ),
+                        Match::Rep(vec![ Match::Str(" ".to_string())]),
+                        Match::Str("+".to_string()),
+                        Match::Rep(vec![Match::Str(" ".to_string())]),
+                        Match::Seq(
+                            vec![
+                                Match::Seq(
+                                    vec![
+                                         Match::Chr("5".to_string()),
+                                         Match::Rep(
+                                             vec![
+                                                  Match::Chr("6".to_string()),
+                                                  Match::Chr("7".to_string())
+                                             ]
+                                        ),
+                                    ]
+                                ),
+                                Match::Rep(vec![])
+                            ]
+                        )
+                    ]
+                )
+            );
         } else {
             panic!("no results from alt");
         }
