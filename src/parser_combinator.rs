@@ -237,7 +237,7 @@ impl ParserCombinator for Addition {
 }
 
 impl ReferenceCombinator for Addition {
-    fn alt2(references: Vec<Box<Fn(State) ->Option<MatchState>>>) -> Box<Fn(State) -> Option<MatchState>> {
+    fn alt2(references: Vec<Box<Fn(State) -> Option<MatchState>>>) -> Box<Fn(State) -> Option<MatchState>> {
         Box::new(move |state| {
             for reference in &references {
                 let result = reference(state.clone());
