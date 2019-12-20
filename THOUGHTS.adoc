@@ -1,0 +1,80 @@
+= THOUGHTS
+
+In an implementation of an abstract syntax tree, there is the use of a Binary
+expression in which you can construct the following:
+
+`Binary { left: left, operator: operator, right: right }`
+
+[line-through]*In the case of a domain-specific language, we don't have a need
+for this because the structure is implicit.*
+
+Perhaps I do. I want to create an overarching concept of a Transaction, and
+that requires parsing as
+
+++++
+Transaction {
+    date
+    edate
+    status
+    description
+}
+++++
+
+There is also an account:
+
+++++
+Account {
+    name
+}
+++++
+
+And a Posting:
+
+++++
+Posting {
+    account
+    transaction
+    commodity_symbol
+    price
+}
+++++
+
+Is a Posting a node or a leaf? A posting fits underneath a transaction but
+may reference an account. Can this be an abstract syntax tree?
+
+
+
+
+Parsing
+-------
+
+My ancillary thoughts on parsing were that if the syntax is wrong, the way
+to break out and continue parsing in recovery is to look for a line break
+or date because unlike a real language, in which a semicolon or `end`
+would be used to determine the break.
+
+Python is a closer example because it uses line breaks and indentations to
+determine separation of "statements." I'd say that the indentation is more
+important, or the blend of newline and indentations are both important.
+
+In the case of Ledger, we only need one indentation and we do not really
+need to worry about newlines, especially as a double newline followed by
+an indentation is regarded as a syntax error. This is not the case with
+Python because the indentation could be part of a series of statements
+that are indented the same way.
+
+What we may be trying to construct is a tree of transactions?
+
+And as we go through each transaction, we are constructing accounts and
+trying to make sure the accounts balance per transaction. And also,
+construct a knowledge base of accounts, so we can do other queries, such
+as total balance, summary, etc. This, however, possibly belongs to the
+next stage rather than the parsing stage.
+
+
+Parser combinator
+-----------------
+
+https://blog.jcoglan.com/2017/07/06/introduction-to-parser-combinators/
+
+This is a long journey. It's the journey that's the worth of my learning, not the destination, not the goal I might have.
